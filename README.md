@@ -1,4 +1,6 @@
-# 🧬 FlexTemp: Multi-Model Temperature-Aware Protein Flexibility Prediction
+# 🧬 drWiggle Junior: Temperature-Aware Protein Flexibility Prediction
+
+
 
 ## 📂 Repository Structure & Component Overview
 
