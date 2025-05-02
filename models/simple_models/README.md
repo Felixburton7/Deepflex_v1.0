@@ -2,7 +2,6 @@
 
 <div align="center">
 
-<img src="https://via.placeholder.com/150x150/4B0082/FFFFFF?text=EnsembleFlex" alt="EnsembleFlex Logo" width="150"/>
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
@@ -48,7 +47,7 @@ EnsembleFlex employs a modular architecture built upon Python libraries like Pan
 </thead>
 <tbody>
   <tr>
-    <td>🌡️ <b>Temperature-Aware Modeling</b></td>
+    <td>🌡 <b>Temperature-Aware Modeling</b></td>
     <td>Trains a single unified model that uses temperature as an explicit input feature, enabling predictions at any temperature within the training range.</td>
   </tr>
   <tr>
@@ -153,60 +152,6 @@ ensembleflex compare-temperatures --model random_forest --input ./data/test_data
 
 EnsembleFlex follows a structured workflow managed by the `Pipeline` class, driven by configuration settings.
 
-**Conceptual Workflow:**
-
-```mermaid
-graph TD
-    A["Aggregated CSV Data\n(with temperature column)"] --> B(Load & Process Data);
-    B --> C["Clean Data & Feature Engineering\n(Encoding, Normalization, Windowing)"];
-    C --> D(Filter Domains);
-    D --> E{"Split Data\n(Train/Val/Test Sets\nStratify by Domain?)"};
-
-    subgraph "Training Pipeline"
-        direction LR
-        E -- Train Set --> F["Select Enabled Model\n(RF, NN, LightGBM)"];
-        F --> G{Optimize Hyperparameters?};
-        G -- Yes --> H["Optimize via RandomizedSearch"];
-        G -- No --> I["Train Model with Temperature Feature"];
-        H --> I;
-        I --> J["Save Trained Model"];
-    end
-
-    subgraph "Evaluation Pipeline"
-        direction LR
-        E -- Test Set --> K[Prepare Evaluation Data];
-        J --> L[Load Model];
-        K --> M["Generate Predictions"];
-        L --> M;
-        M --> N["Calculate Metrics"];
-        N --> O["Save Results"];
-    end
-
-    subgraph "Prediction Pipeline"
-        direction LR
-        P[Input: New Data] --> Q(Process Features);
-        Q --> R["Augment with Target Temperature"];
-        J --> S[Load Model];
-        R --> T["Generate Predictions"];
-        S --> T;
-        T --> U[Save Predictions];
-    end
-
-    subgraph "Analysis & Visualization"
-        direction LR
-        O --> V["Feature Importance Analysis"];
-        O --> W["Residue-Level Error Analysis"];
-        O --> X["Temp Sensitivity Analysis"];
-        X --> Y["Create Temperature Plots"];
-    end
-
-    Z["Configuration (YAML/Env/CLI)"] -.-> B;
-    Z -.-> C;
-    Z -.-> D;
-    Z -.-> E;
-    Z -.-> F;
-    Z -.-> G;
-```
 
 ## 📥 Input Data
 
@@ -240,15 +185,15 @@ Output files are saved to the configured output directory (default: `./output/en
 
 | Output Type                 | Description                                             | Format | Default Path                                      |
 | :-------------------------- | :------------------------------------------------------ | :----- | :------------------------------------------------ |
-| 💾 **Trained Models**       | Saved state of trained models                           | `.pkl`/`.pt` | `./models/ensembleflex/{model_name}.pkl`            |
-| 📊 **Evaluation Metrics**   | Summary of performance metrics for the model            | CSV    | `./output/ensembleflex/evaluation_results.csv`   |
-| 📈 **Detailed Results**     | Full dataset with predictions, errors, and uncertainty  | CSV    | `./output/ensembleflex/all_results.csv`          |
-| 🧩 **Domain Metrics**       | Performance metrics aggregated per domain               | CSV    | `./output/ensembleflex/domain_analysis/domain_metrics.csv` |
-| 🔮 **Predictions**          | Predictions on new input data at specified temperatures | CSV    | `./output/ensembleflex/{input_base}_predictions.csv` |
-| ⭐ **Feature Importance**   | Importance scores for each feature per model            | CSV, PNG| `./output/ensembleflex/feature_importance/`      |
-| 🧬 **Residue Analysis**     | Data for error analysis by AA, position, structure      | CSV, PNG| `./output/ensembleflex/residue_analysis/`        |
-| 🌡️ **Temperature Analysis** | Analysis of model predictions vs temperature            | CSV, PNG| `./output/ensembleflex/temperature_analysis/`    |
-| 📉 **Training History (NN)**| Epoch-wise loss/metrics for Neural Network              | CSV, PNG| `./output/ensembleflex/training_performance/`    |
+| **Trained Models**       | Saved state of trained models                           | `.pkl`/`.pt` | `./models/ensembleflex/{model_name}.pkl`            |
+| **Evaluation Metrics**   | Summary of performance metrics for the model            | CSV    | `./output/ensembleflex/evaluation_results.csv`   |
+| **Detailed Results**     | Full dataset with predictions, errors, and uncertainty  | CSV    | `./output/ensembleflex/all_results.csv`          |
+| **Domain Metrics**       | Performance metrics aggregated per domain               | CSV    | `./output/ensembleflex/domain_analysis/domain_metrics.csv` |
+| **Predictions**          | Predictions on new input data at specified temperatures | CSV    | `./output/ensembleflex/{input_base}_predictions.csv` |
+| **Feature Importance**   | Importance scores for each feature per model            | CSV, PNG| `./output/ensembleflex/feature_importance/`      |
+| **Residue Analysis**     | Data for error analysis by AA, position, structure      | CSV, PNG| `./output/ensembleflex/residue_analysis/`        |
+| **Temperature Analysis** | Analysis of model predictions vs temperature            | CSV, PNG| `./output/ensembleflex/temperature_analysis/`    |
+| **Training History (NN)**| Epoch-wise loss/metrics for Neural Network              | CSV, PNG| `./output/ensembleflex/training_performance/`    |
 
 ## 🤖 Models
 
