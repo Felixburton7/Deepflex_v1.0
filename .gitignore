@@ -21,7 +21,7 @@ wheels/
 *.egg
 
 #Trained Models
-/trained_models
+./trained_models
 # Data files
 *.hdf5
 *.h5
