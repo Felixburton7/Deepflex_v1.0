@@ -153,60 +153,6 @@ ensembleflex compare-temperatures --model random_forest --input ./data/test_data
 
 EnsembleFlex follows a structured workflow managed by the `Pipeline` class, driven by configuration settings.
 
-**Conceptual Workflow:**
-
-```mermaid
-graph TD
-    A["Aggregated CSV Data\n(with temperature column)"] --> B(Load & Process Data);
-    B --> C["Clean Data & Feature Engineering\n(Encoding, Normalization, Windowing)"];
-    C --> D(Filter Domains);
-    D --> E{"Split Data\n(Train/Val/Test Sets\nStratify by Domain?)"};
-
-    subgraph "Training Pipeline"
-        direction LR
-        E -- Train Set --> F["Select Enabled Model\n(RF, NN, LightGBM)"];
-        F --> G{Optimize Hyperparameters?};
-        G -- Yes --> H["Optimize via RandomizedSearch"];
-        G -- No --> I["Train Model with Temperature Feature"];
-        H --> I;
-        I --> J["Save Trained Model"];
-    end
-
-    subgraph "Evaluation Pipeline"
-        direction LR
-        E -- Test Set --> K[Prepare Evaluation Data];
-        J --> L[Load Model];
-        K --> M["Generate Predictions"];
-        L --> M;
-        M --> N["Calculate Metrics"];
-        N --> O["Save Results"];
-    end
-
-    subgraph "Prediction Pipeline"
-        direction LR
-        P[Input: New Data] --> Q(Process Features);
-        Q --> R["Augment with Target Temperature"];
-        J --> S[Load Model];
-        R --> T["Generate Predictions"];
-        S --> T;
-        T --> U[Save Predictions];
-    end
-
-    subgraph "Analysis & Visualization"
-        direction LR
-        O --> V["Feature Importance Analysis"];
-        O --> W["Residue-Level Error Analysis"];
-        O --> X["Temp Sensitivity Analysis"];
-        X --> Y["Create Temperature Plots"];
-    end
-
-    Z["Configuration (YAML/Env/CLI)"] -.-> B;
-    Z -.-> C;
-    Z -.-> D;
-    Z -.-> E;
-    Z -.-> F;
-    Z -.-> G;
-```
 
 ## 📥 Input Data
 
