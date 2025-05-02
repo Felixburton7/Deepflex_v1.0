@@ -20,6 +20,8 @@ wheels/
 .installed.cfg
 *.egg
 
+#Trained Models
+/trained_models
 # Data files
 *.hdf5
 *.h5
