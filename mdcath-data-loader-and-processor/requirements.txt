@@ -1,0 +1,22 @@
+# Core scientific libraries
+h5py>=3.1.0
+numpy>=1.26.4 # Adjusted based on modern practice
+pandas>=1.3.0 # Adjusted based on modern practice
+scikit-learn>=1.0 # For KMeans used in frame selection
+
+# Bioinformatics / Structure handling
+biopython>=1.79 # Adjusted based on modern practice
+pdbUtils>=2.0 # Assuming a version, adjust if needed
+
+# Configuration and Utilities
+PyYAML>=6.0 # Adjusted based on modern practice
+tqdm>=4.60.0
+
+# Plotting
+matplotlib>=3.5.0 # Adjusted based on modern practice
+seaborn>=0.11.0
+statsmodels>=0.14.0
+
+# Note: External dependencies must be installed separately:
+# - dssp or mkdssp (and in PATH)
+# - aposteriori (pip install aposteriori)

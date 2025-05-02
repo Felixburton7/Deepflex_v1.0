@@ -1,0 +1,1810 @@
+==========================================================
+                ESM-flex Context Document
+==========================================================
+
+Project Working Directory: /home/s_felix/esm-flex-LoRA
+
+---------------------------------------------------------
+List of .txt, .yaml, and .py files:
+---------------------------------------------------------
+./config.yaml
+./data/processed/test_domains.txt
+./data/processed/train_domains.txt
+./data/processed/val_domains.txt
+./data_processor.py
+./data/raw/fix_data_.py
+./dataset.py
+./ESM-flex_context.txt
+./main.py
+./model.py
+./predict.py
+./requirements.txt
+./train.py
+./utils/__init__.py
+
+==========================================================
+File Contents:
+==========================================================
+===== FILE: ./config.yaml =====
+# === FILE: config.yaml ===
+# Configuration for ESM-Flex Project using ESM-C and LoRA
+
+data:
+  data_dir: data/processed
+  raw_csv_path: data/raw/temperatuer_320_train.csv # <-- ADJUST THIS PATH if needed
+  non_standard_residue_handling: 'ignore'
+
+model:
+  esm_version: "esmc_600m" # Adjust as needed (e.g., esmc_300m)
+
+  # --- LoRA Configuration ---
+  lora:
+    enabled: true
+
+    # --- Option 1: Increase Rank/Alpha ---
+    # Higher rank allows more complex adaptations but uses more memory.
+    # Common values: 8, 16, 32, 64. Start lower and increase if needed.
+    r: 32 # Current rank (Example: try 32 or 64 next)
+    # Alpha is often set to r or 2*r.
+    lora_alpha: 68 # Current alpha (Example: try 64 or 128 if r is increased)
+
+    lora_dropout: 0.1
+
+    # --- Option 2: Target More Modules ---
+    # Add more layer types to adapt. Requires VERIFYING exact names via print(model).
+    # Example: Target attention projections AND feed-forward layers
+    target_modules: ["q_proj", "k_proj", "v_proj", "out_proj", "fc1", "fc2"]
+    # target_modules: ["q_proj", "k_proj", "v_proj", "out_proj"] 
+
+  # --- Regression Head ---
+  regression:
+    hidden_dim: 32 # Hidden dim of the small MLP head (0 for linear)
+    dropout: 0.1   # Dropout in the regression head
+
+# --- Training Configuration ---
+training:
+  num_epochs: 10
+  batch_size: 4 # Adjust based on VRAM
+  # Learning Rate: May need adjustment if changing LoRA rank/targets significantly
+  # (e.g., lower LR if targeting many more modules or using much higher rank)
+  learning_rate: 5.0e-5
+  weight_decay: 0.01
+  adam_epsilon: 1.0e-8
+  accumulation_steps: 8 # Effective batch size = batch_size * accumulation_steps
+  max_gradient_norm: 1.0
+  use_amp: true # Use Mixed Precision (requires PyTorch >= 1.6)
+  use_flash_attn: true # Set to false if flash-attn not installed or causing issues
+
+  # Scheduler: ReduceLROnPlateau based on validation correlation
+  scheduler_factor: 0.5
+  scheduler_patience: 3
+  scheduler_threshold: 0.001 # How much correlation must improve to reset patience
+  scheduler_mode: 'max'
+
+  # Early Stopping: Based on validation correlation
+  early_stopping_patience: 10
+  early_stopping_threshold: 0.0005 # Min improvement to reset patience
+
+  seed: 42
+  # max_length: 1024 # Optional: Limit sequence length during training/loading
+  length_bucket_size: 50 # For efficient batching by length
+  checkpoint_interval: 5 # Save intermediate checkpoints every N epochs
+
+# --- Output Directory ---
+output:
+  model_dir: models # Checkpoints, logs, plots saved here
+
+# --- Prediction Settings ---
+prediction:
+  batch_size: 8
+  plot_predictions: true
+  smoothing_window: 1 # 1 = no smoothing
+  # max_length: 1024 # Optional: Limit sequence length during prediction
+---------------------------------------------------------
+
+---------------------------------------------------------
+===== FILE: ./data_processor.py =====
+# === FILE: data_processor.py ===
+import pandas as pd
+import numpy as np
+from collections import defaultdict
+import os
+import random
+from typing import Dict, List, Tuple, Set, Optional, Any
+import logging
+from tqdm import tqdm # <--- FIXED: ADDED IMPORT
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Standard 1-letter amino acid codes from 3-letter codes
+AA_MAP = {
+    'ALA': 'A', 'CYS': 'C', 'ASP': 'D', 'GLU': 'E', 'PHE': 'F',
+    'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LYS': 'K', 'LEU': 'L',
+    'MET': 'M', 'ASN': 'N', 'PRO': 'P', 'GLN': 'Q', 'ARG': 'R',
+    'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y',
+    # Common Histidine variants
+    'HSD': 'H', 'HSE': 'H', 'HSP': 'H', 'HID': 'H', 'HIE': 'H',
+}
+# Example extended map if non_standard_handling == 'map'
+# EXTENDED_AA_MAP = {**AA_MAP, 'MSE': 'M', 'SEP': 'S', 'TPO': 'T'}
+
+def load_rmsf_data(csv_path: str) -> Optional[pd.DataFrame]:
+    """Load RMSF data from CSV file, selecting only necessary columns."""
+    required_cols = ['domain_id', 'resid', 'resname', 'rmsf_320']
+    if not os.path.exists(csv_path):
+        logger.error(f"RMSF data file not found: {csv_path}")
+        return None
+    try:
+        df = pd.read_csv(csv_path, usecols=required_cols)
+        logger.info(f"Loaded {len(df)} rows from {csv_path} with columns: {df.columns.tolist()}")
+
+        if not all(col in df.columns for col in required_cols):
+             logger.error(f"CSV missing one or more required columns ({required_cols}). Found: {df.columns.tolist()}")
+             return None
+        if df[required_cols].isnull().values.any():
+            logger.warning(f"NaN values found in required columns. Dropping rows with NaNs in {required_cols}.")
+            nan_counts = df[required_cols].isnull().sum()
+            logger.warning(f"NaN counts per column:\n{nan_counts[nan_counts > 0]}")
+            df.dropna(subset=required_cols, inplace=True)
+            logger.info(f"Remaining rows after dropping NaNs: {len(df)}")
+            if df.empty:
+                logger.error("DataFrame is empty after dropping NaN values.")
+                return None
+
+        df['domain_id'] = df['domain_id'].astype(str)
+        # Ensure 'resid' is numeric and handle potential errors, then convert to nullable Int64
+        df['resid'] = pd.to_numeric(df['resid'], errors='coerce')
+        df.dropna(subset=['resid'], inplace=True) # Drop rows where 'resid' couldn't be converted
+        df['resid'] = df['resid'].astype('Int64')
+
+        df['resname'] = df['resname'].astype(str).str.upper().str.strip()
+        # Ensure 'rmsf_320' is numeric and handle potential errors
+        df['rmsf_320'] = pd.to_numeric(df['rmsf_320'], errors='coerce')
+        df.dropna(subset=['rmsf_320'], inplace=True) # Drop rows where 'rmsf_320' couldn't be converted
+
+        logger.info(f"Remaining rows after type conversion checks: {len(df)}")
+        if df.empty:
+             logger.error("DataFrame empty after type conversion checks.")
+             return None
+
+        return df
+    except ValueError as e:
+        logger.error(f"ValueError during CSV loading or type conversion ({csv_path}): {e}. Check columns/types.", exc_info=True)
+        return None
+    except KeyError as e:
+        logger.error(f"KeyError likely due to missing column during CSV loading ({csv_path}): {e}. Required: {required_cols}", exc_info=True)
+        return None
+    except Exception as e:
+        logger.error(f"Error loading or cleaning CSV file {csv_path}: {e}", exc_info=True)
+        return None
+
+
+def extract_sequences_and_rmsf(df: pd.DataFrame, non_standard_handling: str = 'ignore') -> Dict[str, Dict]:
+    """
+    Group data by domain_id and extract amino acid sequence and RMSF values.
+    Ensures 1:1 correspondence between sequence characters and RMSF values based on sorted 'resid'.
+    """
+    processed_data = {}
+    processed_count = 0
+    skipped_domains = set()
+    non_standard_residues_found = defaultdict(int)
+    alignment_issues = 0
+
+    if 'domain_id' not in df.columns:
+        logger.error("DataFrame missing 'domain_id' column for grouping.")
+        return {}
+
+    # Use progress bar if DataFrame is large
+    unique_domains = df['domain_id'].unique()
+    # Use tqdm for the iterator if there are many domains
+    domain_iterator = tqdm(unique_domains, desc="Processing Domains", leave=False, ncols=100) if len(unique_domains) > 500 else unique_domains
+
+    for domain_id in domain_iterator:
+        # Filter and sort the group for the current domain_id
+        group_df = df[df['domain_id'] == domain_id].sort_values('resid')
+
+        if group_df.empty:
+             logger.warning(f"No data found for domain_id '{domain_id}' after initial loading/filtering. Skipping.")
+             skipped_domains.add(domain_id)
+             continue
+
+        sequence = ''
+        rmsf_values = []
+        valid_domain = True
+        last_resid = 0 # Track last residue ID processed
+
+        for _, row in group_df.iterrows():
+            residue_name = row['resname']
+            # Check for NA/None after potential coercions, though dropna should handle this
+            current_resid = row['resid']
+            if pd.isna(current_resid):
+                 logger.warning(f"Domain {domain_id}: Encountered NA residue ID. Skipping row.")
+                 continue
+
+            # Basic check for sequentiality (optional, can be noisy if gaps are expected)
+            # if current_resid != last_resid + 1 and last_resid != 0:
+            #     logger.debug(f"Domain {domain_id}: Potential gap or non-sequential resid {last_resid} -> {current_resid}.")
+
+            if residue_name in AA_MAP:
+                sequence += AA_MAP[residue_name]
+                rmsf_values.append(row['rmsf_320'])
+                last_resid = current_resid
+            else:
+                # Handle non-standard residues
+                non_standard_residues_found[residue_name] += 1
+                if non_standard_handling == 'discard':
+                    # Log only once per domain for discard
+                    if domain_id not in skipped_domains:
+                         logger.warning(f"Domain {domain_id}: Non-standard residue '{residue_name}'. Discarding domain.")
+                         skipped_domains.add(domain_id)
+                    valid_domain = False
+                    break # Stop processing this domain
+                elif non_standard_handling == 'ignore':
+                    # logger.debug(f"Domain {domain_id}: Ignoring non-standard residue '{residue_name}' at resid {current_resid}.")
+                    pass # Skip row, don't add to sequence or RMSF
+                # Add 'map' logic here if needed based on config
+                # elif non_standard_handling == 'map' and residue_name in EXTENDED_AA_MAP: ...
+                else:
+                    logger.warning(f"Domain {domain_id}: Unknown non-standard residue '{residue_name}' with handling='{non_standard_handling}'. Ignoring residue.")
+                    pass # Treat as ignore
+
+        if not valid_domain:
+            continue # Go to next domain_id
+
+        if sequence: # Only proceed if a sequence was built
+            if len(sequence) == len(rmsf_values):
+                processed_data[domain_id] = {
+                    'sequence': sequence,
+                    'rmsf': np.array(rmsf_values, dtype=np.float32)
+                }
+                processed_count += 1
+            else:
+                # This indicates a logic error in the loop if it occurs
+                logger.error(f"CRITICAL ALIGNMENT ISSUE for domain {domain_id}: Seq len {len(sequence)} != RMSF count {len(rmsf_values)}. Skipping.")
+                skipped_domains.add(domain_id)
+                alignment_issues += 1
+        # Log only if not already skipped and resulted in empty sequence (e.g., only non-standard residues)
+        elif domain_id not in skipped_domains:
+             logger.warning(f"Domain {domain_id} resulted in empty sequence after processing. Skipping.")
+             skipped_domains.add(domain_id)
+
+    logger.info(f"Finished processing. Successfully extracted data for {processed_count} domains.")
+    if skipped_domains: logger.warning(f"Skipped {len(skipped_domains)} domains due to non-standard residues, empty data, or errors.")
+    if non_standard_residues_found: logger.warning(f"Encountered non-standard residues (counts): {dict(non_standard_residues_found)}")
+    if alignment_issues > 0: logger.error(f"Encountered {alignment_issues} critical sequence-RMSF alignment issues.")
+
+    return processed_data
+
+def extract_topology(domain_id: str) -> str:
+    """Extract topology identifier (first 4 chars of domain_id)."""
+    if isinstance(domain_id, str) and len(domain_id) >= 4:
+        return domain_id[:4].upper()
+    else:
+        logger.warning(f"Could not extract topology from short/invalid domain_id: {domain_id}. Using full ID.")
+        return domain_id
+
+def split_by_topology(data: Dict[str, Dict], train_ratio=0.7, val_ratio=0.15, seed=42) -> Tuple[Dict, Dict, Dict]:
+    """Split data by topology to ensure no topology overlap between splits."""
+    if not data: return {}, {}, {}
+    random.seed(seed)
+    logger.info(f"Splitting {len(data)} domains by topology using seed {seed}")
+
+    topology_groups = defaultdict(list)
+    for domain_id in data.keys():
+        topology = extract_topology(domain_id)
+        topology_groups[topology].append(domain_id)
+
+    num_topologies = len(topology_groups)
+    logger.info(f"Found {num_topologies} unique topologies.")
+    if num_topologies < 3: logger.warning(f"Very few topologies ({num_topologies}). Splits might be uneven or empty.")
+
+    topologies = list(topology_groups.keys()); random.shuffle(topologies)
+    n = num_topologies
+    train_idx = int(n * train_ratio); val_idx = train_idx + int(n * val_ratio)
+
+    # Adjust indices to prevent empty splits if possible
+    if n >= 3: # Need at least 3 topologies for meaningful split
+        if train_idx == 0: train_idx = 1 # Give at least one to train
+        if val_idx == train_idx: val_idx = train_idx + 1 # Give at least one to val
+        if val_idx >= n: # Prevent val taking everything intended for test
+            val_idx = n - 1 # Leave at least one for test
+            if train_idx >= val_idx: # Ensure train is smaller than val start
+                train_idx = max(0, val_idx - 1)
+
+    # Handle edge cases with N < 3
+    elif n == 2:
+        train_idx = 1
+        val_idx = 2 # Train gets 1, Test gets 1, Val is empty
+        logger.warning("Only 2 topologies found. Assigning 1 to Train, 1 to Test, 0 to Val.")
+    elif n == 1:
+        train_idx = 1 # All go to train
+        val_idx = 1
+        logger.warning("Only 1 topology found. Assigning all to Train split.")
+    # If n=0, indices remain 0
+
+    train_topologies, val_topologies, test_topologies = set(topologies[:train_idx]), set(topologies[train_idx:val_idx]), set(topologies[val_idx:])
+    logger.info(f"Split topology counts: Train={len(train_topologies)}, Val={len(val_topologies)}, Test={len(test_topologies)}")
+
+    train_data, val_data, test_data = {}, {}, {}
+    assigned_count = 0
+    unassigned_topos = set()
+    for topology, domain_ids in topology_groups.items():
+        data_subset = {did: data[did] for did in domain_ids}
+        assigned = False
+        if topology in train_topologies: train_data.update(data_subset); assigned = True
+        elif topology in val_topologies: val_data.update(data_subset); assigned = True
+        elif topology in test_topologies: test_data.update(data_subset); assigned = True
+
+        if not assigned:
+             logger.error(f"Topology {topology} was not assigned to any split! Indices: train={train_idx}, val={val_idx}")
+             unassigned_topos.add(topology)
+        else:
+             assigned_count += len(data_subset)
+
+    logger.info(f"Split domain counts: Train={len(train_data)}, Val={len(val_data)}, Test={len(test_data)}")
+    if assigned_count != len(data): logger.warning(f"Domain count mismatch after split ({assigned_count} assigned vs {len(data)} input). Unassigned topos: {unassigned_topos}")
+    return train_data, val_data, test_data
+
+def save_split_data(data: Dict, output_dir: str, split_name: str):
+    """Save split data (domain list, FASTA, RMSF numpy) to disk."""
+    if not data: logger.warning(f"No data for split '{split_name}'. Skipping save."); return
+    os.makedirs(output_dir, exist_ok=True)
+    domain_ids = sorted(list(data.keys()))
+
+    # Domain list
+    domain_list_path = os.path.join(output_dir, f"{split_name}_domains.txt")
+    try:
+        with open(domain_list_path, 'w') as f: f.write("\n".join(domain_ids))
+        logger.info(f"Saved {len(domain_ids)} domain IDs to {domain_list_path}")
+    except IOError as e: logger.error(f"Error writing domain list {domain_list_path}: {e}")
+
+    # FASTA
+    fasta_path = os.path.join(output_dir, f"{split_name}_sequences.fasta")
+    fasta_count = 0
+    try:
+        with open(fasta_path, 'w') as f:
+            for domain_id in domain_ids:
+                if 'sequence' in data[domain_id] and data[domain_id]['sequence']:
+                    f.write(f">{domain_id}\n{data[domain_id]['sequence']}\n"); fasta_count += 1
+        logger.info(f"Saved {fasta_count} sequences to {fasta_path}")
+    except IOError as e: logger.error(f"Error writing FASTA file {fasta_path}: {e}")
+
+    # RMSF NPY
+    rmsf_path = os.path.join(output_dir, f"{split_name}_rmsf.npy")
+    rmsf_data_to_save = {did: data[did]['rmsf'].astype(np.float32) for did in domain_ids if 'rmsf' in data[did] and isinstance(data[did]['rmsf'], np.ndarray) and data[did]['rmsf'].size > 0}
+    if rmsf_data_to_save:
+        try:
+            np.save(rmsf_path, rmsf_data_to_save, allow_pickle=True)
+            logger.info(f"Saved RMSF data for {len(rmsf_data_to_save)} domains to {rmsf_path}")
+        except Exception as e: logger.error(f"Error saving RMSF numpy file {rmsf_path}: {e}")
+    else: logger.warning(f"No valid RMSF data to save for split {split_name}.")
+
+
+def process_data(config: Dict[str, Any]) -> bool:
+    """Main function to process RMSF data based on config."""
+    data_config = config['data']
+    csv_path = data_config['raw_csv_path']
+    output_dir = data_config['data_dir']
+    # Ratios and seed usually related to training setup
+    train_config = config.get('training', {})
+    # Use get with defaults for ratios if not present
+    train_ratio = float(train_config.get('train_ratio', 0.7))
+    val_ratio = float(train_config.get('val_ratio', 0.15))
+    seed = int(train_config.get('seed', 42))
+    non_standard_handling = data_config.get('non_standard_residue_handling', 'ignore')
+
+    logger.info("Starting data processing pipeline...")
+    logger.info(f"Input CSV: {csv_path}, Output Dir: {output_dir}")
+    logger.info(f"Splits: Train={train_ratio:.2f}, Val={val_ratio:.2f}, Test={max(0, 1 - train_ratio - val_ratio):.2f}") # Ensure test isn't negative
+    logger.info(f"Non-standard handling: {non_standard_handling}, Seed: {seed}")
+
+    try:
+        df = load_rmsf_data(csv_path)
+        if df is None or df.empty:
+             logger.error("Failed to load or clean raw CSV data.")
+             return False
+        data = extract_sequences_and_rmsf(df, non_standard_handling)
+        if not data:
+             logger.error("No valid sequence/RMSF data extracted.")
+             return False
+        train_data, val_data, test_data = split_by_topology(data, train_ratio, val_ratio, seed)
+        # Check if splits have data before saving
+        if not train_data: logger.warning("Training split is empty after processing!")
+        if not val_data: logger.warning("Validation split is empty after processing!")
+        if not test_data: logger.warning("Test split is empty after processing!")
+        save_split_data(train_data, output_dir, 'train')
+        save_split_data(val_data, output_dir, 'val')
+        save_split_data(test_data, output_dir, 'test')
+        logger.info("Data processing completed successfully.")
+        return True
+    except Exception as e:
+        logger.error(f"Data processing failed: {e}", exc_info=True)
+        return False
+
+# Command-line interface
+if __name__ == "__main__":
+    import argparse
+    import yaml
+    parser = argparse.ArgumentParser(description='Process RMSF data based on config.')
+    parser.add_argument('--config', type=str, default='config.yaml', help='Path to YAML config file.')
+    args = parser.parse_args()
+    try:
+        with open(args.config, 'r') as f: config = yaml.safe_load(f)
+    except Exception as e: logger.error(f"Error loading config {args.config}: {e}"); exit(1)
+    if not process_data(config): exit(1)
+---------------------------------------------------------
+===== FILE: ./data/raw/fix_data_.py =====
+import re
+import os
+import argparse
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def fix_histidine_variants(input_filename: str, output_filename: str):
+    """
+    Replaces common non-standard histidine residue names (HSD, HSE, HSP)
+    with 'HIS' in a CSV file.
+
+    Args:
+        input_filename: Path to the input CSV file.
+        output_filename: Path where the modified CSV file will be saved.
+    """
+    logger.info(f"Reading input file: {input_filename}")
+    try:
+        with open(input_filename, 'r', encoding='utf-8') as infile:
+            content = infile.read()
+        logger.info(f"Read {len(content)} characters from the input file.")
+    except FileNotFoundError:
+        logger.error(f"Input file not found: {input_filename}")
+        return
+    except Exception as e:
+        logger.error(f"Error reading input file {input_filename}: {e}")
+        return
+
+    # Define patterns for common histidine variants (case-insensitive matching)
+    # Using \b ensures we match whole words/codes
+    replacements = {
+        r'\bHSD\b': 'HIS',
+        r'\bHSE\b': 'HIS',
+        r'\bHSP\b': 'HIS',
+        # Add more variants if needed, e.g., r'\bHID\b': 'HIS'
+    }
+
+    modified_content = content
+    replacements_made = 0
+    for pattern, replacement in replacements.items():
+        modified_content, count = re.subn(pattern, replacement, modified_content, flags=re.IGNORECASE)
+        if count > 0:
+            logger.info(f"Replaced {count} occurrences of pattern '{pattern}' with '{replacement}'.")
+            replacements_made += count
+
+    if replacements_made == 0:
+         logger.info("No histidine variants found or replaced.")
+    else:
+         logger.info(f"Total replacements made: {replacements_made}")
+
+    logger.info(f"Writing modified content to: {output_filename}")
+    try:
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+        with open(output_filename, 'w', encoding='utf-8') as outfile:
+            outfile.write(modified_content)
+        logger.info(f"Conversion complete. Modified file saved as {output_filename}")
+    except IOError as e:
+        logger.error(f"Error writing output file {output_filename}: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error writing output file {output_filename}: {e}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Standardize histidine residue names (HSD, HSE, etc.) to HIS in a CSV file.')
+    parser.add_argument('--input', type=str, required=True, help='Path to the input CSV file.')
+    parser.add_argument('--output', type=str, required=True, help='Path to save the modified output CSV file.')
+    args = parser.parse_args()
+
+    fix_histidine_variants(args.input, args.output)
+
+---------------------------------------------------------
+===== FILE: ./dataset.py =====
+import torch
+from torch.utils.data import Dataset, DataLoader, Sampler
+import numpy as np
+import os
+import random
+import logging
+from typing import List, Dict, Tuple, Optional, Any, Iterator
+from collections import defaultdict
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s')
+logger = logging.getLogger(__name__)
+
+class RMSFDataset(Dataset):
+    """PyTorch Dataset for RMSF prediction from pre-processed files."""
+    def __init__(self, domain_ids: List[str], sequences: Dict[str, str], rmsf_values: Dict[str, np.ndarray]):
+        self.domain_ids = domain_ids
+        self.sequences = sequences
+        self.rmsf_values = rmsf_values
+        self._validate_data()
+        logger.info(f"RMSFDataset initialized with {len(self.domain_ids)} valid domain IDs.")
+
+    def _validate_data(self):
+        """Ensures all domain_ids have corresponding, non-empty, length-matched sequence and rmsf."""
+        valid_ids = []
+        original_count = len(self.domain_ids)
+        for did in self.domain_ids:
+            seq = self.sequences.get(did)
+            rmsf = self.rmsf_values.get(did)
+            if seq and isinstance(rmsf, np.ndarray) and rmsf.size > 0:
+                if len(seq) == len(rmsf):
+                    valid_ids.append(did)
+                else:
+                    logger.warning(f"Dataset validation: Length mismatch for {did} (Seq={len(seq)}, RMSF={len(rmsf)}). Excluding.")
+            else:
+                 logger.warning(f"Dataset validation: Missing/empty seq or RMSF for {did}. Excluding.")
+        removed_count = original_count - len(valid_ids)
+        if removed_count > 0:
+             logger.warning(f"Removed {removed_count} invalid entries during dataset validation.")
+        self.domain_ids = valid_ids
+        if not self.domain_ids:
+             raise ValueError("No valid data remains after dataset validation.")
+
+    def __len__(self) -> int:
+        return len(self.domain_ids)
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        if not (0 <= idx < len(self.domain_ids)):
+             raise IndexError(f"Index {idx} out of bounds for dataset size {len(self.domain_ids)}")
+        domain_id = self.domain_ids[idx]
+        sequence = self.sequences[domain_id]
+        rmsf = self.rmsf_values[domain_id] # Already float32 numpy array
+        return {'domain_id': domain_id, 'sequence': sequence, 'rmsf': rmsf, 'length': len(sequence)}
+
+def load_sequences_from_fasta(fasta_path: str) -> Dict[str, str]:
+    """Loads sequences from a FASTA file."""
+    sequences = {}
+    try:
+        with open(fasta_path, 'r') as f:
+            current_id, current_seq = None, ""
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                if line.startswith('>'):
+                    if current_id: sequences[current_id] = current_seq
+                    current_id = line[1:].split()[0]
+                    current_seq = ""
+                elif current_id: # Ensure we have an ID before adding sequence parts
+                    current_seq += line.upper().replace("-","").replace(".","") # Basic cleaning
+            if current_id: sequences[current_id] = current_seq # Add last sequence
+    except FileNotFoundError: logger.error(f"FASTA not found: {fasta_path}"); raise
+    except Exception as e: logger.error(f"Error reading FASTA {fasta_path}: {e}"); raise
+    logger.info(f"Loaded {len(sequences)} sequences from {fasta_path}")
+    return sequences
+
+def load_split_data(data_dir: str, split: str) -> Optional[Tuple[List[str], Dict[str, str], Dict[str, np.ndarray]]]:
+    """Load domain IDs, sequences, and RMSF values for a specific split."""
+    logger.info(f"Loading {split} data from {data_dir}")
+    domain_ids_path = os.path.join(data_dir, f"{split}_domains.txt")
+    sequences_path = os.path.join(data_dir, f"{split}_sequences.fasta")
+    rmsf_path = os.path.join(data_dir, f"{split}_rmsf.npy")
+
+    if not all(os.path.exists(p) for p in [domain_ids_path, sequences_path, rmsf_path]):
+        logger.error(f"One or more required files missing for split '{split}' in {data_dir}.")
+        # Check which specifically are missing
+        if not os.path.exists(domain_ids_path): logger.error(f"Missing: {domain_ids_path}")
+        if not os.path.exists(sequences_path): logger.error(f"Missing: {sequences_path}")
+        if not os.path.exists(rmsf_path): logger.error(f"Missing: {rmsf_path}")
+        return None
+
+    try:
+        with open(domain_ids_path, 'r') as f: domain_ids = [line.strip() for line in f if line.strip()]
+        if not domain_ids: logger.warning(f"Domain ID file empty: {domain_ids_path}")
+        sequences = load_sequences_from_fasta(sequences_path)
+        rmsf_data_loaded = np.load(rmsf_path, allow_pickle=True).item()
+        # Ensure RMSF values are float32 numpy arrays
+        rmsf_data = {k: np.array(v, dtype=np.float32) for k, v in rmsf_data_loaded.items()}
+
+        # Final consistency filter: Keep only domain IDs present in all three loaded structures
+        final_domain_ids = [did for did in domain_ids if did in sequences and did in rmsf_data]
+        removed_count = len(domain_ids) - len(final_domain_ids)
+        if removed_count > 0:
+             logger.warning(f"Removed {removed_count} domain IDs during final load consistency check for split '{split}'.")
+
+        if not final_domain_ids:
+             logger.error(f"No consistent domain IDs found for split '{split}' across all files.")
+             return None
+
+        # Filter the dictionaries
+        final_sequences = {did: sequences[did] for did in final_domain_ids}
+        final_rmsf_values = {did: rmsf_data[did] for did in final_domain_ids}
+
+        logger.info(f"Successfully loaded and verified {len(final_domain_ids)} entries for split '{split}'.")
+        return final_domain_ids, final_sequences, final_rmsf_values
+
+    except Exception as e:
+        logger.error(f"Failed to load data for split '{split}': {e}", exc_info=True)
+        return None
+
+def collate_fn(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Custom collate: batches sequences as strings, RMSF as tensors, adds lengths."""
+    domain_ids = [item['domain_id'] for item in batch]
+    sequences = [item['sequence'] for item in batch]
+    lengths = [item['length'] for item in batch]
+    rmsf_values = [torch.tensor(item['rmsf'], dtype=torch.float32) for item in batch]
+    return {'domain_ids': domain_ids, 'sequences': sequences, 'rmsf_values': rmsf_values, 'lengths': lengths}
+
+class LengthBasedBatchSampler(Sampler[List[int]]):
+    """Sampler yielding batches of indices grouped by sequence length."""
+    def __init__(self, dataset: RMSFDataset, batch_size: int, length_bucket_size: int, shuffle: bool = True, drop_last: bool = False):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.length_bucket_size = length_bucket_size
+        self.shuffle = shuffle
+        self.drop_last = drop_last
+        self.num_samples = len(dataset)
+        self.batches = self._create_batches()
+        self.num_batches = len(self.batches)
+        logger.info(f"LengthBasedBatchSampler: Grouped {self.num_samples} samples into {self.num_batches} batches.")
+
+    def _create_batches(self) -> List[List[int]]:
+        buckets = defaultdict(list)
+        for i in range(self.num_samples):
+            length = self.dataset[i]['length'] # Get length directly from dataset item
+            bucket_idx = length // self.length_bucket_size
+            buckets[bucket_idx].append(i)
+
+        all_batches = []
+        bucket_indices = sorted(buckets.keys()) if not self.shuffle else list(buckets.keys())
+        if self.shuffle: random.shuffle(bucket_indices)
+
+        for bucket_idx in bucket_indices:
+            indices = buckets[bucket_idx]
+            if self.shuffle: random.shuffle(indices)
+            for i in range(0, len(indices), self.batch_size):
+                batch_indices = indices[i : i + self.batch_size]
+                if len(batch_indices) == self.batch_size or (not self.drop_last and len(batch_indices) > 0):
+                    all_batches.append(batch_indices)
+        if self.shuffle: random.shuffle(all_batches)
+        return all_batches
+
+    def __iter__(self) -> Iterator[List[int]]:
+        if self.shuffle: self.batches = self._create_batches() # Re-shuffle every epoch
+        yield from self.batches
+
+    def __len__(self) -> int: return self.num_batches
+
+def create_dataloader(data_dir: str, split: str, batch_size: int, shuffle: bool, max_length: Optional[int], length_bucket_size: int, num_workers: int, pin_memory: bool, drop_last: bool) -> Optional[DataLoader]:
+    """Creates a PyTorch DataLoader, potentially using length-based batching."""
+    loaded_data = load_split_data(data_dir, split)
+    if loaded_data is None: return None
+    domain_ids, sequences, rmsf_values = loaded_data
+    if not domain_ids: return None
+
+    dataset = RMSFDataset(domain_ids, sequences, rmsf_values)
+
+    # Filter Dataset by max_length *before* creating sampler
+    indices_to_keep = list(range(len(dataset)))
+    if max_length is not None:
+         original_count = len(dataset)
+         indices_to_keep = [i for i in indices_to_keep if dataset[i]['length'] <= max_length]
+         if len(indices_to_keep) < original_count:
+             logger.info(f"Filtering '{split}' dataset by max_length={max_length}. Keeping {len(indices_to_keep)}/{original_count}.")
+             dataset = torch.utils.data.Subset(dataset, indices_to_keep) # Use Subset for filtering
+             if len(dataset) == 0: logger.warning(f"No samples left in '{split}' after max_length filter."); return None
+
+    # Create Sampler and DataLoader
+    use_length_sampler = (length_bucket_size > 0)
+    if use_length_sampler:
+        logger.info(f"Using LengthBasedBatchSampler for '{split}' (Bucket size: {length_bucket_size}).")
+        # Pass the original dataset (if Subset) or the Subset object to the sampler
+        data_source_for_sampler = dataset.dataset if isinstance(dataset, torch.utils.data.Subset) else dataset
+        # We need the *indices* relative to the original dataset for the sampler
+        # This is complex with Subset. Let's simplify: apply filtering *after* getting lengths for bucketing.
+        # Revert: Filter *before* creating dataset seems cleaner if done carefully. Let's assume RMSFDataset handles indices.
+        # Re-revert: Subset is standard. Sampler needs access to lengths of the original data via the subset indices.
+
+        # Let's try simpler approach first: Create sampler on the *potentially subsetted* dataset
+        batch_sampler = LengthBasedBatchSampler(dataset, batch_size, length_bucket_size, shuffle, drop_last)
+        dataloader = DataLoader(dataset, batch_sampler=batch_sampler, collate_fn=collate_fn, num_workers=num_workers, pin_memory=pin_memory and torch.cuda.is_available())
+    else:
+        logger.info(f"Using standard DataLoader for '{split}'.")
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=collate_fn, num_workers=num_workers, pin_memory=pin_memory and torch.cuda.is_available(), drop_last=drop_last)
+
+    logger.info(f"DataLoader created for '{split}' with {len(dataset)} samples.")
+    return dataloader
+
+
+---------------------------------------------------------
+===== FILE: ./ESM-flex_context.txt =====
+
+---------------------------------------------------------
+===== FILE: ./main.py =====
+#!/usr/bin/env python3
+import argparse
+import os
+import sys
+import yaml
+import logging
+import torch # Import torch early to check availability
+
+# Set project root directory relative to this script file
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+# Add project root to Python path to allow importing modules
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# Setup logging (configure root logger)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s', stream=sys.stdout)
+logger = logging.getLogger(__name__) # Get logger for this script
+
+# Now import project modules with error handling
+try:
+    from data_processor import process_data
+    from train import train
+    from predict import predict
+except ImportError as e:
+     logger.critical(f"Error: Failed to import project modules. Is the script run from the project root?", exc_info=True)
+     sys.exit(1)
+except Exception as e:
+     logger.critical(f"An unexpected error occurred during initial imports: {e}", exc_info=True)
+     sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='ESM-Flex (ESM-C + LoRA): Protein Flexibility (RMSF) Prediction Pipeline.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest='command', help='Command to run', required=True)
+
+    # Process data command
+    process_parser = subparsers.add_parser('process', help='Process raw RMSF CSV data.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    process_parser.add_argument('--config', type=str, default='config.yaml', help='Path to the YAML config file.')
+
+    # Train command
+    train_parser = subparsers.add_parser('train', help='Train the ESM-C LoRA model.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    train_parser.add_argument('--config', type=str, default='config.yaml', help='Path to the YAML config file.')
+    # Note: Use 'accelerate launch main.py train ...' for multi-GPU
+
+    # Predict command
+    predict_parser = subparsers.add_parser('predict', help='Predict RMSF using a trained model.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    predict_parser.add_argument('--model_checkpoint', type=str, required=True, help='Path to trained model *directory*.')
+    predict_parser.add_argument('--fasta_path', type=str, required=True, help='Input FASTA file.')
+    predict_parser.add_argument('--output_dir', type=str, default='predictions', help='Output directory for predictions.')
+    predict_parser.add_argument('--batch_size', type=int, default=8, help='Prediction batch size.')
+    predict_parser.add_argument('--max_length', type=int, default=None, help='Max sequence length for prediction.')
+    predict_parser.add_argument('--plot_predictions', action=argparse.BooleanOptionalAction, default=True, help='Generate RMSF plots.')
+    predict_parser.add_argument('--smoothing_window', type=int, default=1, help='Smoothing window for plots.')
+
+    args = parser.parse_args()
+
+    # --- Load Config for Process/Train ---
+    config = None
+    if args.command in ['process', 'train']:
+        config_path = args.config
+        try:
+            with open(config_path, 'r') as f: config = yaml.safe_load(f)
+            logger.info(f"Loaded configuration from {config_path}")
+        except Exception as e: logger.critical(f"Error loading config '{config_path}': {e}", exc_info=True); sys.exit(1)
+        if not config: logger.critical("Config file is empty or invalid."); sys.exit(1)
+
+    # --- Execute Command ---
+    try:
+        if args.command == 'process':
+            logger.info("Initiating data processing...")
+            if not process_data(config): sys.exit(1) # process_data returns bool
+            logger.info("Data processing finished.")
+        elif args.command == 'train':
+            logger.info("Initiating model training...")
+            if 'ACCELERATE_PROCESS_ID' not in os.environ and torch.cuda.is_available() and torch.cuda.device_count() > 1:
+                 logger.warning("Multiple GPUs detected but not using 'accelerate launch'. Training may be suboptimal.")
+            train(config) # Train function handles detailed logging and potential errors
+            logger.info("Training script finished.")
+        elif args.command == 'predict':
+            logger.info("Initiating prediction...")
+            predict_config = vars(args) # Use predict's args directly
+            predict(predict_config)
+            logger.info("Prediction script finished.")
+        else: # Should be unreachable
+            logger.error(f"Unknown command: {args.command}"); parser.print_help(); sys.exit(1)
+    except Exception as e:
+         # Catch errors raised from the called functions
+         logger.critical(f"A critical error occurred during command execution: {e}", exc_info=True)
+         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
+---------------------------------------------------------
+===== FILE: ./model.py =====
+# === FILE: model.py ===
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import logging
+import numpy as np
+from typing import List, Dict, Tuple, Optional, Any
+from torch.nn.utils.rnn import pad_sequence # Needed for padding
+
+# PEFT for LoRA integration
+try:
+    from peft import get_peft_model, LoraConfig, TaskType, PeftModel, PeftConfig
+    peft_available = True
+except ImportError:
+    logging.warning("PEFT library not found. LoRA functionality will be disabled. Install with 'pip install peft'")
+    peft_available = False
+    class DummyPeftClass: pass
+    LoraConfig, TaskType, PeftModel, PeftConfig = DummyPeftClass, DummyPeftClass, DummyPeftClass, DummyPeftClass
+    def get_peft_model(model, config): return model
+
+# ESM library for base model
+try:
+    from esm.models.esmc import ESMC
+    from esm.sdk.api import ESMProtein, LogitsConfig, ESMProteinTensor
+    esm_available = True
+except ImportError:
+    logging.error("Failed to import ESM-C classes from 'esm' library. Ensure 'esm>=2.0.0' installed (`pip install esm`).")
+    esm_available = False
+    raise
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Known Embedding Dimensions
+ESMC_DIMENSIONS = {"esmc_300m": 960, "esmc_600m": 1152, "esmc_6b": 2560}
+
+class ESMRegressionModelWithLoRA(nn.Module):
+    """ESM-C model with optional LoRA fine-tuning for RMSF prediction."""
+    def __init__(self, config: Dict):
+        super().__init__()
+        if not esm_available: raise RuntimeError("ESM library not available.")
+        self.config = config
+        model_config = config['model']
+        lora_config_dict = model_config.get('lora', {})
+        regression_config = model_config['regression']
+        esm_model_name = model_config['esm_version']
+        self.lora_enabled = lora_config_dict.get('enabled', False) and peft_available
+
+        logger.info(f"Initializing ESMRegressionModelWithLoRA: Base={esm_model_name}, LoRA={self.lora_enabled}")
+
+        # --- Load Base Model ---
+        try:
+            self.base_model = ESMC.from_pretrained(esm_model_name)
+            logger.info(f"Base model {esm_model_name} loaded.")
+        except Exception as e:
+            logger.error(f"Failed to load base ESM model '{esm_model_name}': {e}", exc_info=True); raise
+
+        # --- Determine Embedding Dimension ---
+        self.hidden_dim = self._get_hidden_dim(esm_model_name)
+        logger.info(f"Using embedding dimension: {self.hidden_dim} for {esm_model_name}")
+
+        # --- Configure PEFT ---
+        if self.lora_enabled:
+            logger.info("Configuring PEFT LoRA...")
+            target_modules = lora_config_dict.get('target_modules', ["q_proj", "v_proj"])
+            logger.info(f"Attempting to target LoRA modules: {target_modules}")
+            peft_config = LoraConfig(
+                task_type=TaskType.TOKEN_CLS, inference_mode=False,
+                r=lora_config_dict.get('r', 16), lora_alpha=lora_config_dict.get('lora_alpha', 32),
+                lora_dropout=lora_config_dict.get('lora_dropout', 0.1),
+                target_modules=target_modules, bias="none"
+            )
+            try:
+                self.model = get_peft_model(self.base_model, peft_config)
+                logger.info("PEFT LoRA adapters applied.")
+                self.model.print_trainable_parameters()
+            except ValueError as e: logger.error(f"Failed PEFT: {e}. Check 'target_modules'."); raise e
+        else:
+            logger.info("LoRA disabled. Freezing base model."); self.model = self.base_model
+            for param in self.model.parameters(): param.requires_grad = False
+
+        # --- Regression Head ---
+        regression_hidden = regression_config.get('hidden_dim', 32)
+        regression_dropout = regression_config.get('dropout', 0.1)
+        head_layers = [nn.LayerNorm(self.hidden_dim)]
+        if regression_hidden > 0:
+            head_layers.extend([nn.Linear(self.hidden_dim, regression_hidden), nn.GELU(), nn.Dropout(regression_dropout), nn.Linear(regression_hidden, 1)])
+            logger.info(f"Using MLP regression head (In: {self.hidden_dim}, Hidden: {regression_hidden}, Dropout: {regression_dropout})")
+        else:
+            head_layers.extend([nn.Dropout(regression_dropout), nn.Linear(self.hidden_dim, 1)])
+            logger.info(f"Using Linear regression head (In: {self.hidden_dim}, Dropout: {regression_dropout})")
+        self.regression_head = nn.Sequential(*head_layers)
+        for param in self.regression_head.parameters(): param.requires_grad = True
+        logger.info("Regression head configured and set to trainable.")
+        self._log_parameter_counts()
+
+    def _get_hidden_dim(self, model_name: str) -> int:
+        if model_name in ESMC_DIMENSIONS: return ESMC_DIMENSIONS[model_name]
+        else: raise ValueError(f"Embedding dimension for '{model_name}' unknown. Add to ESMC_DIMENSIONS.")
+
+    def _log_parameter_counts(self):
+        total = sum(p.numel() for p in self.parameters())
+        trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        logger.info(f"Params: Total={total:,}, Trainable={trainable:,} ({trainable/total:.4%})")
+
+    def forward(self, sequences: List[str], rmsf_values: Optional[List[torch.Tensor]] = None) -> Dict[str, Any]:
+        device = next(self.parameters()).device
+        self.model.to(device)
+        self.regression_head.to(device)
+
+        batch_embeddings_list = []
+        original_lengths = []
+        processed_indices = [] # Keep track of indices successfully processed
+
+        # --- Process sequences individually ---
+        for i, seq_str in enumerate(sequences):
+            if not (seq_str and isinstance(seq_str, str) and set(seq_str.upper()).issubset(set('ACDEFGHIKLMNPQRSTVWY'))):
+                # logger.warning(f"Idx {i}: Invalid/empty sequence or chars. Skipping.")
+                # Add placeholder for prediction list reconstruction later
+                batch_embeddings_list.append(None)
+                original_lengths.append(0)
+                continue
+
+            try:
+                protein_obj = ESMProtein(sequence=seq_str)
+                encoded_output = self.model.encode(protein_obj)
+                logits_output = self.model.logits(encoded_output, LogitsConfig(sequence=True, return_embeddings=True))
+                embeddings = logits_output.embeddings # Shape: [1, SeqLenPadded, Dim]
+
+                if embeddings is None: raise ValueError("Logits call did not return embeddings.")
+
+                # Extract the actual sequence embedding (remove potential batch dim)
+                # and move to correct device
+                single_embedding = embeddings.squeeze(0).to(device) # Shape: [SeqLenPadded, Dim]
+                batch_embeddings_list.append(single_embedding)
+                original_lengths.append(len(seq_str)) # Store original length
+                processed_indices.append(i)
+
+            except Exception as e:
+                logger.error(f"Error processing sequence index {i}: {e}", exc_info=True)
+                batch_embeddings_list.append(None) # Mark as failed
+                original_lengths.append(0)
+                # Continue processing other sequences in the batch
+
+        # Filter out failed embeddings before padding
+        valid_embeddings = [emb for emb in batch_embeddings_list if emb is not None]
+        valid_lengths = [l for i, l in enumerate(original_lengths) if batch_embeddings_list[i] is not None]
+
+        if not valid_embeddings: # If all sequences in batch failed
+            dummy_loss = torch.tensor(0.0, device=device, requires_grad=True) if self.training else torch.tensor(0.0, device=device)
+            return {'predictions': [torch.tensor([], device=device)] * len(sequences), 'loss': dummy_loss, 'metrics': {'pearson_correlation': 0.0}}
+
+        # --- Pad and Stack Embeddings ---
+        # pad_sequence expects a list of tensors [SeqLen, Dim]
+        # batch_first=True makes output [Batch, MaxSeqLen, Dim]
+        padded_embeddings = pad_sequence(valid_embeddings, batch_first=True, padding_value=0.0)
+
+        # --- Regression Head ---
+        # Pass padded batch through the head
+        # Input: [ValidBatchSize, MaxSeqLen, Dim] -> Output: [ValidBatchSize, MaxSeqLen]
+        token_predictions_padded = self.regression_head(padded_embeddings).squeeze(-1)
+
+        # --- Extract valid per-residue predictions (Handle BOS/EOS and padding) ---
+        predictions_valid = []
+        targets_valid = []
+        valid_original_indices_final = [] # Indices from original batch corresponding to predictions_valid
+
+        for i in range(token_predictions_padded.shape[0]): # Iterate through the valid batch dimension
+            original_len = valid_lengths[i]
+            original_batch_idx = processed_indices[i] # Get original index
+
+            start_idx, end_idx = 1, original_len + 1 # Slice BOS/EOS
+
+            if end_idx <= token_predictions_padded.shape[1]: # Check against padded length
+                sequence_predictions = token_predictions_padded[i, start_idx:end_idx]
+                if len(sequence_predictions) == original_len:
+                    predictions_valid.append(sequence_predictions)
+                    valid_original_indices_final.append(original_batch_idx)
+                    if rmsf_values is not None and original_batch_idx < len(rmsf_values):
+                        targets_valid.append(rmsf_values[original_batch_idx].to(device))
+                    elif rmsf_values is not None:
+                         logger.error(f"Original index {original_batch_idx} out of bounds for rmsf_values list (len={len(rmsf_values)})")
+                else: logger.warning(f"Idx {original_batch_idx}: Length mismatch post-slice. Expected {original_len}, got {len(sequence_predictions)}. Skipping.")
+            else: logger.warning(f"Idx {original_batch_idx}: Padded prediction too short ({token_predictions_padded.shape[1]}) for slice end ({end_idx}). Skipping.")
+
+
+        # --- Loss & Metrics ---
+        loss = torch.tensor(0.0, device=device, requires_grad=True) if self.training else torch.tensor(0.0, device=device)
+        metrics = {'pearson_correlation': 0.0}
+        if rmsf_values is not None and predictions_valid and len(predictions_valid) == len(targets_valid):
+            mse_losses = [F.mse_loss(pred, target) for pred, target in zip(predictions_valid, targets_valid) if len(pred) > 0]
+            pearson_correlations = [self.safe_pearson_correlation(pred, target) for pred, target in zip(predictions_valid, targets_valid) if len(pred) > 1]
+            if mse_losses:
+                try: loss = torch.stack(mse_losses).mean(); loss = loss if not torch.isnan(loss) else torch.tensor(0.0, device=device, requires_grad=True)
+                except RuntimeError: loss = torch.tensor(0.0, device=device, requires_grad=True)
+            if pearson_correlations:
+                valid_corrs = [c for c in pearson_correlations if not torch.isnan(c)]
+                if valid_corrs:
+                    try: metrics['pearson_correlation'] = torch.stack(valid_corrs).mean().item()
+                    except RuntimeError: pass
+
+        # --- Reconstruct output list to match original batch size ---
+        final_predictions_list = [torch.tensor([], device=device)] * len(sequences)
+        if len(predictions_valid) == len(valid_original_indices_final):
+             for pred_tensor, original_idx in zip(predictions_valid, valid_original_indices_final):
+                 final_predictions_list[original_idx] = pred_tensor
+        else: logger.error("Mismatch count when reconstructing final prediction list.")
+
+        return {'predictions': final_predictions_list, 'loss': loss, 'metrics': metrics}
+
+    @staticmethod
+    def safe_pearson_correlation(x: torch.Tensor, y: torch.Tensor, epsilon: float = 1e-8) -> torch.Tensor:
+        """Calculate Pearson correlation safely."""
+        x, y = x.float(), y.float(); len_x = x.numel()
+        if len_x < 2: return torch.tensor(0.0, device=x.device)
+        if torch.allclose(x, x[0], atol=epsilon) or torch.allclose(y, y[0], atol=epsilon): return torch.tensor(0.0, device=x.device) # Check for near constant
+        vx, vy = x - torch.mean(x), y - torch.mean(y)
+        denom_sqrt_x = torch.sqrt(torch.sum(vx ** 2)); denom_sqrt_y = torch.sqrt(torch.sum(vy ** 2))
+        if denom_sqrt_x < epsilon or denom_sqrt_y < epsilon: return torch.tensor(0.0, device=x.device)
+        cost = torch.sum(vx * vy) / (denom_sqrt_x * denom_sqrt_y + epsilon)
+        cost = torch.clamp(cost, -1.0, 1.0)
+        return cost if not torch.isnan(cost) else torch.tensor(0.0, device=x.device)
+
+    @torch.no_grad()
+    def predict(self, sequences: List[str]) -> List[np.ndarray]:
+        """Generates predictions for a list of sequences."""
+        self.eval()
+        outputs = self.forward(sequences=sequences, rmsf_values=None)
+        return [pred.detach().cpu().numpy() for pred in outputs['predictions']]
+---------------------------------------------------------
+===== FILE: ./predict.py =====
+# === FILE: predict.py ===
+import os
+import torch
+import torch.nn as nn # <--- ADDED THIS IMPORT
+import argparse
+import yaml
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import pandas as pd
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union, Any
+import time
+from collections import defaultdict
+
+# Import the correct model definition
+from model import ESMRegressionModelWithLoRA
+# Import helpers from dataset
+from dataset import load_sequences_from_fasta
+
+# PEFT for loading LoRA adapters
+try:
+    from peft import PeftModel, PeftConfig
+    peft_available = True
+except ImportError:
+    logging.error("PEFT library not found. Cannot load LoRA models.")
+    peft_available = False
+    # Prediction might still work if loading a non-PEFT model, but unlikely for this project
+    class PeftModel: pass # Dummy
+    class PeftConfig: pass # Dummy
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s', force=True)
+logger = logging.getLogger(__name__)
+
+def log_gpu_memory(detail=False):
+    """Log GPU memory usage if CUDA is available."""
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024**2; reserved = torch.cuda.memory_reserved() / 1024**2
+        logger.info(f"GPU Memory: Allocated={allocated:.1f}MB, Reserved={reserved:.1f}MB")
+        if detail: logger.info(torch.cuda.memory_summary())
+
+def load_model_for_prediction(checkpoint_dir: str, device: torch.device) -> Optional[ESMRegressionModelWithLoRA]:
+    """Load a trained model for prediction, handling PEFT checkpoints."""
+    logger.info(f"Loading model for prediction from directory: {checkpoint_dir}")
+    if not os.path.isdir(checkpoint_dir): logger.error(f"Checkpoint dir not found: {checkpoint_dir}"); return None
+
+    # --- Load Configuration ---
+    config_from_ckpt = None
+    training_state_path = os.path.join(checkpoint_dir, "training_state.pt")
+    if os.path.exists(training_state_path):
+        try:
+            # Load state dict on CPU first to avoid GPU memory issues if model is large
+            training_state = torch.load(training_state_path, map_location='cpu')
+            config_from_ckpt = training_state.get('config')
+            if config_from_ckpt: logger.info("Loaded training config from training_state.pt")
+            else: logger.warning("Found training_state.pt but 'config' key is missing.")
+        except Exception as e: logger.warning(f"Could not load training_state.pt: {e}. Trying PEFT config.")
+
+    adapter_config_path = os.path.join(checkpoint_dir, "adapter_config.json")
+    is_peft_model = os.path.exists(adapter_config_path)
+
+    if not config_from_ckpt and is_peft_model:
+        try:
+            peft_config = PeftConfig.from_pretrained(checkpoint_dir)
+            config_from_ckpt = {'model': {'esm_version': peft_config.base_model_name_or_path,
+                                          'lora': {'enabled': True},
+                                          'regression': {}}} # Minimal config
+            logger.info(f"Loaded base model name '{config_from_ckpt['model']['esm_version']}' from adapter_config.json")
+        except Exception as e: logger.error(f"Failed to load PeftConfig: {e}"); return None
+
+    if not config_from_ckpt: logger.error("Cannot determine model config from checkpoint files."); return None
+    if 'model' not in config_from_ckpt or 'esm_version' not in config_from_ckpt['model']:
+         logger.error("Loaded config is incomplete (missing model/esm_version)."); return None
+
+    # --- Instantiate Base Model Structure ---
+    try:
+        temp_config = config_from_ckpt.copy()
+        temp_config['model']['lora'] = temp_config['model'].get('lora', {})
+        temp_config['model']['lora']['enabled'] = False # Create base + head first
+        model = ESMRegressionModelWithLoRA(temp_config)
+        logger.info("Base model and head structure created.")
+    except Exception as e: logger.error(f"Error creating model structure: {e}", exc_info=True); return None
+
+    # --- Load Weights (PEFT or Full) ---
+    if is_peft_model:
+        if not peft_available: logger.error("PEFT needed to load adapters but not installed."); return None
+        logger.info("Loading PEFT LoRA adapters and head weights...")
+        try:
+            # Load onto the created structure (model). device_map can help with large models.
+            model = PeftModel.from_pretrained(model, checkpoint_dir) #, device_map="auto")
+            logger.info(f"PEFT adapters/head loaded successfully from {checkpoint_dir}")
+        except Exception as e: logger.error(f"Error loading PEFT model: {e}", exc_info=True); return None
+    else: # Handle non-PEFT loading if necessary (less likely path for this project)
+        logger.warning("Attempting to load as a non-PEFT model.")
+        full_ckpt_path = os.path.join(checkpoint_dir, "full_model_checkpoint.pt") # Adjust name if needed
+        if os.path.exists(full_ckpt_path):
+             try:
+                  state_dict = torch.load(full_ckpt_path, map_location='cpu')['model_state_dict']
+                  model.load_state_dict(state_dict)
+                  logger.info("Loaded full model state dict.")
+             except Exception as e: logger.error(f"Error loading full state dict: {e}"); return None
+        else: logger.error("Cannot load non-PEFT model: Checkpoint file not found."); return None
+
+    model = model.to(device)
+    model.eval()
+    logger.info(f"Model loaded to {device} and set to eval mode.")
+    return model
+
+def group_sequences_by_length(sequences: Dict[str, str], batch_size: int, bucket_size: int = 50) -> List[List[Tuple[str, str]]]:
+    """Groups sequences by length into buckets and then creates batches."""
+    if not sequences: return []
+    length_buckets = defaultdict(list); seq_items = list(sequences.items())
+    seq_items.sort(key=lambda item: len(item[1])) # Sort by length
+    for seq_id, seq in seq_items:
+        bucket_idx = len(seq) // bucket_size
+        length_buckets[bucket_idx].append((seq_id, seq))
+    all_batches = []
+    for bucket_idx in sorted(length_buckets.keys()): # Process buckets by length
+        bucket_items = length_buckets[bucket_idx]
+        for i in range(0, len(bucket_items), batch_size):
+            all_batches.append(bucket_items[i : i + batch_size])
+    logger.info(f"Grouped {len(sequences)} sequences into {len(all_batches)} batches.")
+    return all_batches
+
+@torch.no_grad()
+def predict_rmsf(model: nn.Module, sequences: Dict[str, str], batch_size: int, device: torch.device) -> Dict[str, np.ndarray]:
+    """Predict RMSF values for sequences."""
+    model.eval(); results = {}; 
+    if not sequences: return {}
+    batches = group_sequences_by_length(sequences, batch_size)
+    logger.info(f"Starting RMSF prediction for {len(sequences)} sequences...")
+    start_time = time.time()
+
+    for batch_data in tqdm(batches, desc="Predicting", leave=False):
+        batch_ids = [item[0] for item in batch_data]
+        batch_seqs = [item[1] for item in batch_data]
+        try:
+            batch_predictions_np = model.predict(batch_seqs) # Model's predict method
+            if len(batch_predictions_np) == len(batch_ids):
+                for seq_id, pred_np in zip(batch_ids, batch_predictions_np): results[seq_id] = pred_np
+            else: logger.error(f"Prediction mismatch: {len(batch_predictions_np)} vs {len(batch_ids)} IDs.")
+        except Exception as e: logger.error(f"Batch prediction error: {e}", exc_info=True); continue
+
+    duration = time.time() - start_time
+    logger.info(f"Prediction completed for {len(results)} sequences in {duration:.2f}s.")
+    if results: logger.info(f"Avg time/seq: {duration / len(results):.4f}s")
+    return results
+
+def plot_rmsf(predictions: np.ndarray, title: str, output_path: str, window_size: int = 1, figsize: Tuple[int, int] = (15, 6)):
+    """Plot predicted RMSF values."""
+    if predictions is None or predictions.size == 0: logger.warning(f"No plot data for {title}"); return
+    plt.style.use('seaborn-v0_8-whitegrid'); fig, ax = plt.subplots(figsize=figsize)
+    pred_len = len(predictions); indices = np.arange(1, pred_len + 1)
+    data = predictions; label = 'RMSF Prediction'
+    if window_size > 1:
+        data = pd.Series(predictions).rolling(window=window_size, center=True, min_periods=1).mean().to_numpy()
+        label = f'RMSF Prediction (Smoothed, w={window_size})'
+    ax.plot(indices, data, '-', color='dodgerblue', linewidth=1.5, label=label)
+    ax.set_xlabel('Residue Position'); ax.set_ylabel('Predicted RMSF'); ax.set_title(f'Predicted RMSF for {title} (Length: {pred_len})')
+    ax.set_xlim(0, pred_len + 1); ax.grid(True, linestyle=':', alpha=0.7)
+    try: # Add stats
+        stats = {'Mean': np.nanmean(predictions), 'Median': np.nanmedian(predictions), 'Min': np.nanmin(predictions), 'Max': np.nanmax(predictions)}
+        stats_text = "\n".join([f"{k}: {v:.3f}" for k,v in stats.items()])
+        ax.text(0.98, 0.95, stats_text, transform=ax.transAxes, fontsize=8, va='top', ha='right', bbox=dict(boxstyle='round,pad=0.3', fc='wheat', alpha=0.4))
+        p90 = np.nanpercentile(predictions, 90)
+        ax.axhline(y=p90, color='red', linestyle='--', lw=1, alpha=0.6, label=f'90th Perc. ({p90:.3f})')
+    except Exception: pass
+    ax.legend(loc='upper left'); plt.tight_layout()
+    try: os.makedirs(os.path.dirname(output_path), exist_ok=True); plt.savefig(output_path, dpi=120, bbox_inches='tight')
+    except Exception as e: logger.error(f"Failed save plot {output_path}: {e}")
+    plt.close(fig)
+
+def save_predictions(predictions: Dict[str, np.ndarray], output_path: str):
+    """Save predictions to CSV."""
+    if not predictions: logger.warning("No predictions to save."); return
+    data = [{'domain_id': did, 'resid': i + 1, 'rmsf_pred': rmsf}
+            for did, rmsf_arr in predictions.items() if rmsf_arr is not None and rmsf_arr.size > 0
+            for i, rmsf in enumerate(rmsf_arr)]
+    if not data: logger.warning("No valid prediction data points to save."); return
+    try:
+        df = pd.DataFrame(data); os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        df.to_csv(output_path, index=False, float_format='%.6f')
+        logger.info(f"Predictions saved to {output_path}")
+    except Exception as e: logger.error(f"Failed save predictions CSV {output_path}: {e}")
+
+def predict(config: Dict[str, Any]):
+    """Main prediction function."""
+    start_time = time.time(); device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    output_dir = config.get('output_dir', 'predictions'); os.makedirs(output_dir, exist_ok=True)
+    log_path = os.path.join(output_dir, 'prediction.log')
+    # Ensure exclusive file handler for this run
+    root_logger = logging.getLogger()
+    # Remove previous handlers associated with this file path
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.FileHandler) and handler.baseFilename == log_path:
+             handler.close()
+             root_logger.removeHandler(handler)
+    file_handler = logging.FileHandler(log_path, mode='w'); file_handler.setFormatter(logging.Formatter('%(asctime)s-%(levelname)s-%(message)s'))
+    root_logger.addHandler(file_handler) # Add handler to root logger
+
+    logger.info("--- Starting Prediction Run ---"); logger.info(f"Using device: {device}")
+    logger.info(f"Prediction config: {config}")
+    if device.type == 'cuda': log_gpu_memory()
+
+    model_checkpoint_dir = config.get('model_checkpoint'); fasta_path = config.get('fasta_path')
+    if not model_checkpoint_dir or not fasta_path: logger.critical("Missing model checkpoint dir or fasta path."); return
+
+    model = load_model_for_prediction(model_checkpoint_dir, device)
+    if model is None: logger.critical("Failed load model."); return
+    if device.type == 'cuda': log_gpu_memory()
+
+    try: sequences = load_sequences_from_fasta(fasta_path); assert sequences
+    except Exception as e: logger.critical(f"Failed load FASTA: {e}"); return
+
+    max_length = config.get('max_length')
+    if max_length:
+        count_before = len(sequences)
+        sequences = {k: v for k, v in sequences.items() if len(v) <= max_length}
+        logger.info(f"Filtered {count_before - len(sequences)} sequences > {max_length} residues.")
+        if not sequences: logger.critical("No sequences left after filter."); return
+
+    predictions = predict_rmsf(model, sequences, config.get('batch_size', 8), device)
+
+    if predictions:
+        output_csv = os.path.join(output_dir, 'predictions.csv')
+        save_predictions(predictions, output_csv)
+        if config.get('plot_predictions', True):
+            plots_dir = os.path.join(output_dir, 'plots')
+            window = config.get('smoothing_window', 1)
+            logger.info(f"Generating plots in {plots_dir} (Smooth={window})...")
+            for did, pred_arr in tqdm(predictions.items(), desc="Plotting", leave=False):
+                if did in sequences: plot_rmsf(pred_arr, did, os.path.join(plots_dir, f'{did}.png'), window)
+            logger.info("Plotting complete.")
+
+    end_time = time.time()
+    logger.info(f"--- Prediction Run Finished ({end_time - start_time:.2f}s) ---")
+    logger.info(f"Results saved in: {output_dir}")
+    # Remove handler at the end to avoid interference if script is run multiple times in one session
+    root_logger.removeHandler(file_handler)
+    file_handler.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Predict RMSF using trained ESM-C+LoRA model.')
+    parser.add_argument('--model_checkpoint', type=str, required=True, help='Path to *directory* containing saved model/adapter files.')
+    parser.add_argument('--fasta_path', type=str, required=True, help='Input FASTA file.')
+    parser.add_argument('--output_dir', type=str, default='predictions', help='Directory for results.')
+    parser.add_argument('--batch_size', type=int, default=8, help='Prediction batch size.')
+    parser.add_argument('--max_length', type=int, default=None, help='Optional: Max sequence length filter.')
+    parser.add_argument('--plot_predictions', action=argparse.BooleanOptionalAction, default=True, help='Generate plots.')
+    parser.add_argument('--smoothing_window', type=int, default=1, help='Smoothing window for plots (1=none).')
+    args = parser.parse_args(); predict(vars(args))
+---------------------------------------------------------
+===== FILE: ./requirements.txt =====
+# Core ML/DL
+torch>=2.0.0 # Need a recent version for better PEFT/Flash Attention support
+esm>=2.0.0 # Meta/EvolutionaryScale ESM library (installed via 'pip install esm')
+peft>=0.8.0 # For LoRA and other PEFT methods
+transformers>=4.35.0 # Often needed by PEFT/ESM
+accelerate>=0.25.0 # Helper for device management, mixed precision
+
+# Optional but recommended for performance
+# Install separately: pip install flash-attn --no-build-isolation
+# flash-attn>=2.0.0
+
+# Data Handling & Utilities
+numpy>=1.21.0
+pandas>=1.4.0
+pyyaml>=6.0
+tqdm>=4.60.0
+scikit-learn>=1.0.0 # For potential metrics/utilities
+
+# Plotting
+matplotlib>=3.5.0
+seaborn>=0.11.0 # Often used with matplotlib for better aesthetics
+
+---------------------------------------------------------
+===== FILE: ./train.py =====
+# === FILE: train.py ===
+import os
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import argparse
+import yaml
+from tqdm import tqdm
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+import logging
+import time
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Any
+
+# Use Accelerate for device placement and potentially distributed training later
+from accelerate import Accelerator, DistributedDataParallelKwargs
+from accelerate.utils import set_seed as accelerate_set_seed
+
+from dataset import create_dataloader
+from model import ESMRegressionModelWithLoRA # Import the LoRA-enabled model
+
+# --- Setup Logging ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s] - %(message)s', force=True)
+logger = logging.getLogger(__name__)
+
+
+def log_gpu_memory(accelerator, prefix=""):
+    """Log GPU memory usage on the current accelerator device."""
+    if accelerator.device.type == 'cuda':
+        allocated = torch.cuda.memory_allocated(accelerator.device) / 1024**2
+        reserved = torch.cuda.memory_reserved(accelerator.device) / 1024**2
+        logger.info(f"{prefix}GPU Memory (Device {accelerator.local_process_index}): Allocated={allocated:.1f}MB, Reserved={reserved:.1f}MB")
+
+def save_model_checkpoint(accelerator: Accelerator, model_to_save, optimizer, epoch, val_loss, val_corr, config, save_dir, is_peft=False):
+    """Save model checkpoint, handling PEFT models and distributed training correctly."""
+    if accelerator.is_main_process:
+        os.makedirs(save_dir, exist_ok=True)
+        unwrapped_model = accelerator.unwrap_model(model_to_save) # Get the underlying ESMRegressionModelWithLoRA
+
+        if is_peft:
+            try:
+                # --- FIXED: Call save_pretrained on the PEFT model attribute ---
+                # The PeftModel instance is stored within our custom model class, typically as '.model'
+                peft_model_instance = unwrapped_model.model # Access the PeftModel wrapper
+                peft_model_instance.save_pretrained(save_dir)
+                # Note: This PEFT method should save adapters AND the state_dict of
+                # non-PEFT modules like our regression_head if defined correctly.
+                logger.info(f"PEFT model components (adapters/head) saved to directory: {save_dir}")
+
+                # Save optimizer and other training state separately
+                optimizer_path = os.path.join(save_dir, "optimizer.pt")
+                training_state_path = os.path.join(save_dir, "training_state.pt")
+
+                accelerator.save(optimizer.state_dict(), optimizer_path) # Use accelerator.save
+
+                training_state = {
+                    'epoch': epoch,
+                    'val_loss': val_loss,
+                    'val_corr': val_corr,
+                    'config': config # Save the config used for this training run
+                }
+                accelerator.save(training_state, training_state_path) # Use accelerator.save
+                logger.info(f"Optimizer and training state saved in {save_dir}")
+
+            except AttributeError as ae:
+                 logger.error(f"AttributeError during PEFT save. Does 'unwrapped_model' have a '.model' attribute holding the PeftModel? Error: {ae}", exc_info=True)
+            except Exception as e:
+                logger.error(f"Error saving PEFT model components to {save_dir}: {e}", exc_info=True)
+        else: # Standard saving for non-PEFT models
+             logger.warning("Attempting to save non-PEFT model.")
+             save_path = os.path.join(save_dir, "full_model_checkpoint.pt")
+             checkpoint = {
+                 'epoch': epoch,
+                 'model_state_dict': unwrapped_model.state_dict(),
+                 'optimizer_state_dict': optimizer.state_dict(),
+                 'val_loss': val_loss, 'val_corr': val_corr, 'config': config
+             }
+             try: accelerator.save(checkpoint, save_path)
+             except Exception as e: logger.error(f"Error saving non-PEFT checkpoint: {e}")
+
+
+def train_epoch(model, dataloader, optimizer, accelerator: Accelerator, max_gradient_norm: float):
+    """Train the model for one epoch using Accelerate."""
+    model.train()
+    total_loss_accum = 0.0
+    total_corr_accum = 0.0
+    samples_processed_accum = 0
+    start_time = time.time()
+
+    optimizer.zero_grad()
+
+    batch_iterator = tqdm(dataloader, desc="Training Epoch", disable=not accelerator.is_local_main_process, leave=False, ncols=100)
+    for step, batch in enumerate(batch_iterator):
+        sequences = batch['sequences']
+        rmsf_values = batch['rmsf_values']
+        # Estimate global batch size for logging avg loss/corr (adjust if using uneven batches)
+        current_global_batch_size = len(sequences) * accelerator.num_processes
+
+        with accelerator.accumulate(model): # Handles sync and grad accumulation context
+            outputs = model(sequences=sequences, rmsf_values=rmsf_values)
+            loss = outputs['loss']
+            correlation = outputs['metrics'].get('pearson_correlation', 0.0) # Metric from this rank
+
+            if loss is None or torch.isnan(loss) or torch.isinf(loss):
+                logger.warning(f"[Rank {accelerator.process_index}] Step {step}: Invalid loss ({loss}). Skipping backward.")
+                continue # Skip gradient calc and step
+
+            # Ensure loss is valid before backward
+            if not torch.isnan(loss) and not torch.isinf(loss):
+                 # Gather loss across GPUs *before* backward for accurate logging of step loss
+                 avg_loss_step = accelerator.gather(loss.detach()).mean()
+                 accelerator.backward(loss) # Scales loss and calls backward()
+
+                 if accelerator.sync_gradients: # Only clip/step when grads are synced
+                     if max_gradient_norm > 0:
+                          accelerator.clip_grad_norm_(model.parameters(), max_gradient_norm)
+                     optimizer.step()
+                     optimizer.zero_grad()
+
+                 # --- Accumulate Metrics for Logging (on main process) ---
+                 if accelerator.is_main_process:
+                      # Accumulate using the gathered average loss for the step
+                      total_loss_accum += avg_loss_step.item() * current_global_batch_size
+                      # Gather correlation - average across devices for a better estimate
+                      gathered_corr_tensor = accelerator.gather(torch.tensor(correlation, device=accelerator.device))
+                      gathered_corr_tensor_valid = gathered_corr_tensor[~torch.isnan(gathered_corr_tensor)]
+                      avg_corr_step = gathered_corr_tensor_valid.mean().item() if gathered_corr_tensor_valid.numel() > 0 else 0.0
+                      total_corr_accum += avg_corr_step * current_global_batch_size
+                      samples_processed_accum += current_global_batch_size
+
+                      # Update progress bar
+                      avg_loss_epoch = total_loss_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+                      avg_corr_epoch = total_corr_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+                      batch_iterator.set_postfix(
+                          loss=f"{avg_loss_step.item():.4f}", # Step avg loss
+                          corr=f"{avg_corr_step:.4f}", # Step avg corr
+                          ep_loss=f"{avg_loss_epoch:.4f}", # Running epoch avg loss
+                          ep_corr=f"{avg_corr_epoch:.4f}" # Running epoch avg corr
+                      )
+            else:
+                logger.warning(f"[Rank {accelerator.process_index}] Step {step}: NaN or Inf loss before backward. Gradients not computed.")
+
+    # --- Epoch End Calculation ---
+    accelerator.wait_for_everyone()
+    final_avg_loss, final_avg_corr = None, None
+    if accelerator.is_main_process:
+        final_avg_loss = total_loss_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+        final_avg_corr = total_corr_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+        epoch_duration = time.time() - start_time
+        logger.info(f"Train Epoch completed in {epoch_duration:.2f}s. Avg Loss: {final_avg_loss:.6f}, Avg Corr: {final_avg_corr:.6f}")
+
+    return final_avg_loss, final_avg_corr
+
+
+@torch.no_grad()
+def validate(model, dataloader, accelerator: Accelerator):
+    """Validate the model using Accelerate."""
+    model.eval()
+    total_loss_accum = 0.0
+    total_corr_accum = 0.0
+    samples_processed_accum = 0
+    start_time = time.time()
+
+    batch_iterator = tqdm(dataloader, desc="Validation", disable=not accelerator.is_local_main_process, leave=False, ncols=100)
+    for step, batch in enumerate(batch_iterator):
+        sequences = batch['sequences']
+        rmsf_values = batch['rmsf_values']
+        current_global_batch_size = len(sequences) * accelerator.num_processes
+
+        outputs = model(sequences=sequences, rmsf_values=rmsf_values)
+        loss = outputs['loss']
+        correlation = outputs['metrics'].get('pearson_correlation', 0.0)
+
+        if loss is None or torch.isnan(loss) or torch.isinf(loss):
+            logger.warning(f"[Rank {accelerator.process_index}] Validation Step {step}: Invalid loss ({loss}). Skipping.")
+            continue
+
+        # Gather results across all processes
+        gathered_loss = accelerator.gather(loss.detach()).mean()
+        gathered_corr_tensor = accelerator.gather(torch.tensor(correlation, device=accelerator.device))
+        gathered_corr_tensor_valid = gathered_corr_tensor[~torch.isnan(gathered_corr_tensor)]
+        avg_corr_batch = gathered_corr_tensor_valid.mean().item() if gathered_corr_tensor_valid.numel() > 0 else 0.0
+
+        # Accumulate on main process
+        if accelerator.is_main_process:
+            total_loss_accum += gathered_loss.item() * current_global_batch_size
+            total_corr_accum += avg_corr_batch * current_global_batch_size
+            samples_processed_accum += current_global_batch_size
+
+            # Update progress bar
+            avg_loss_epoch = total_loss_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+            avg_corr_epoch = total_corr_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+            batch_iterator.set_postfix(loss=f"{gathered_loss.item():.4f}", corr=f"{avg_corr_batch:.4f}")
+
+    # --- Epoch End Calculation ---
+    accelerator.wait_for_everyone()
+    final_avg_loss, final_avg_corr = None, None
+    if accelerator.is_main_process:
+        final_avg_loss = total_loss_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+        final_avg_corr = total_corr_accum / samples_processed_accum if samples_processed_accum > 0 else 0.0
+        epoch_duration = time.time() - start_time
+        logger.info(f"Validation completed in {epoch_duration:.2f}s. Avg Loss: {final_avg_loss:.6f}, Avg Corr: {final_avg_corr:.6f}")
+
+    return final_avg_loss, final_avg_corr
+
+
+def plot_metrics(train_losses, val_losses, train_corrs, val_corrs, save_dir, lr_values=None):
+    """Plot training and validation metrics."""
+    if not train_losses or not val_losses: return # Cannot plot if lists are empty
+    epochs = range(1, len(train_losses) + 1)
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+    # Loss Plot
+    ax1.plot(epochs, train_losses, 'o-', color='royalblue', label='Train Loss', markersize=4)
+    ax1.plot(epochs, val_losses, 's-', color='orangered', label='Validation Loss', markersize=4)
+    ax1.set_ylabel('Loss (MSE)'); ax1.set_title('Training and Validation Loss'); ax1.legend(); ax1.grid(True, linestyle='--', alpha=0.6)
+    if val_losses: # Check if list is not empty
+        best_val_loss_epoch = np.argmin(val_losses)
+        ax1.scatter(best_val_loss_epoch + 1, val_losses[best_val_loss_epoch], marker='*', color='red', s=100, zorder=5, label=f'Best Val Loss ({val_losses[best_val_loss_epoch]:.4f})')
+        ax1.legend()
+
+    # Correlation Plot
+    ax2.plot(epochs, train_corrs, 'o-', color='royalblue', label='Train Correlation', markersize=4)
+    ax2.plot(epochs, val_corrs, 's-', color='orangered', label='Validation Correlation', markersize=4)
+    ax2.set_xlabel('Epoch'); ax2.set_ylabel('Pearson Correlation'); ax2.set_title('Training and Validation Correlation'); ax2.grid(True, linestyle='--', alpha=0.6)
+    if val_corrs: # Check if list is not empty
+        best_val_corr_epoch = np.argmax(val_corrs)
+        ax2.scatter(best_val_corr_epoch + 1, val_corrs[best_val_corr_epoch], marker='*', color='red', s=100, zorder=5, label=f'Best Val Corr ({val_corrs[best_val_corr_epoch]:.4f})')
+    ax2.legend(loc='lower right')
+
+    # Learning Rate Plot (Optional)
+    if lr_values:
+        ax3 = ax2.twinx()
+        ax3.plot(epochs, lr_values, 'd--', color='green', label='Learning Rate', markersize=3, alpha=0.7)
+        ax3.set_ylabel('Learning Rate', color='green'); ax3.tick_params(axis='y', labelcolor='green')
+        # Use log scale only if LR actually changes significantly
+        if len(lr_values) > 1 and min(lr_values) < max(lr_values) * 0.9:
+             ax3.set_yscale('log')
+        ax3.legend(loc='center right')
+
+    plt.tight_layout(pad=1.5)
+    os.makedirs(save_dir, exist_ok=True)
+    plot_path = os.path.join(save_dir, 'training_metrics.png')
+    try: plt.savefig(plot_path, dpi=150, bbox_inches='tight'); logger.info(f"Metrics plot saved to {plot_path}")
+    except Exception as e: logger.error(f"Error saving metrics plot: {e}")
+    plt.close(fig)
+
+
+def train(config: Dict):
+    """Main training function using Accelerate."""
+    start_time_train = time.time()
+    train_config = config['training']
+
+    # --- Initialize Accelerator ---
+    # Handle find_unused_parameters based on config or default
+    find_unused = train_config.get('ddp_find_unused_parameters', False) # Default False
+    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=find_unused)
+    # Check for AMP setting in config
+    mixed_precision = "fp16" if train_config.get('use_amp', False) else "no"
+
+    accelerator = Accelerator(
+        gradient_accumulation_steps=train_config['accumulation_steps'],
+        log_with="tensorboard", # Or "wandb" etc.
+        project_dir=config['output']['model_dir'],
+        kwargs_handlers=[ddp_kwargs],
+        mixed_precision=mixed_precision # Set mixed precision type
+    )
+
+    # --- Setup Logging ---
+    log_dir = os.path.join(config['output']['model_dir'], 'logs')
+    if accelerator.is_main_process:
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, 'training.log')
+        # Ensure root logger has file handler only on main process
+        root_logger = logging.getLogger()
+        # Remove previous file handlers for this path if any
+        for handler in root_logger.handlers[:]:
+             if isinstance(handler, logging.FileHandler) and handler.baseFilename == log_path:
+                  handler.close()
+                  root_logger.removeHandler(handler)
+        file_handler = logging.FileHandler(log_path, mode='a')
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s [%(name)s] - %(message)s'))
+        root_logger.addHandler(file_handler)
+        logger.info("--- Starting New Training Run ---")
+        logger.info(f"Accelerate state: {accelerator.state}")
+        logger.info(f"Using device: {accelerator.device}")
+        logger.info(f"Mixed precision: {accelerator.mixed_precision}")
+        logger.info(f"Configuration loaded.")
+    else: # Reduce logging on non-main processes
+         logging.getLogger().setLevel(logging.WARNING)
+
+    accelerate_set_seed(train_config['seed'])
+    if accelerator.is_main_process: log_gpu_memory(accelerator, prefix="Initial ")
+
+    # --- Data Loaders ---
+    if accelerator.is_main_process: logger.info("Creating data loaders...")
+    try:
+        num_workers = train_config.get('num_workers', 0) # Default to 0, increase if IO allows
+        pin_memory = train_config.get('pin_memory', True)
+        train_dataloader = create_dataloader(
+            config['data']['data_dir'], 'train', train_config['batch_size'], shuffle=True,
+            max_length=train_config.get('max_length'),
+            length_bucket_size=train_config.get('length_bucket_size', 50),
+            num_workers=num_workers, pin_memory=pin_memory, drop_last=True
+        )
+        val_dataloader = create_dataloader(
+            config['data']['data_dir'], 'val', train_config['batch_size'], shuffle=False,
+            max_length=train_config.get('max_length'),
+            length_bucket_size=train_config.get('length_bucket_size', 50),
+            num_workers=num_workers, pin_memory=pin_memory, drop_last=False
+        )
+        if not train_dataloader or not val_dataloader: logger.error("Failed to create dataloaders."); return
+    except Exception as e: logger.error(f"Error creating dataloaders: {e}", exc_info=True); return
+    if accelerator.is_main_process: logger.info("Dataloaders created.")
+
+    # --- Model ---
+    if accelerator.is_main_process: logger.info("Creating model...")
+    try:
+        model = ESMRegressionModelWithLoRA(config)
+        is_peft_model = config['model'].get('lora', {}).get('enabled', False)
+    except Exception as e: logger.error(f"Error creating model: {e}", exc_info=True); return
+    if accelerator.is_main_process: logger.info("Model created.")
+
+    # --- Optimizer ---
+    try:
+        params_to_optimize = [p for p in model.parameters() if p.requires_grad]
+        if not params_to_optimize: logger.error("Model has no trainable parameters!"); return
+        optimizer = optim.AdamW(
+            params_to_optimize, lr=float(train_config['learning_rate']),
+            eps=float(train_config.get('adam_epsilon', 1e-8)),
+            weight_decay=float(train_config['weight_decay'])
+        )
+    except Exception as e: logger.error(f"Error creating optimizer: {e}", exc_info=True); return
+    if accelerator.is_main_process: logger.info("Optimizer created.")
+
+    # --- Scheduler ---
+    scheduler = ReduceLROnPlateau(
+        optimizer, mode=train_config.get('scheduler_mode', 'max'),
+        factor=train_config.get('scheduler_factor', 0.5),
+        patience=train_config['scheduler_patience'], verbose=False, # Log manually
+        threshold=train_config.get('scheduler_threshold', 0.001)
+    )
+    if accelerator.is_main_process: logger.info("Scheduler created.")
+
+    # --- Prepare with Accelerate ---
+    model, optimizer, train_dataloader, val_dataloader, scheduler = accelerator.prepare(
+        model, optimizer, train_dataloader, val_dataloader, scheduler
+    )
+    if accelerator.is_main_process:
+        logger.info("Components prepared with Accelerate.")
+        log_gpu_memory(accelerator, prefix="After Accelerate Prepare ")
+
+    # --- Training Loop ---
+    if accelerator.is_main_process: logger.info("--- Starting Training Loop ---")
+    best_val_corr = -float('inf')
+    best_val_loss = float('inf')
+    patience_counter = 0
+    train_losses, val_losses, train_corrs, val_corrs, lr_values = [], [], [], [], []
+    num_epochs = train_config['num_epochs']
+    early_stopping_patience = train_config['early_stopping_patience']
+    early_stopping_threshold = train_config['early_stopping_threshold']
+    model_save_dir = config['output']['model_dir']
+
+    for epoch in range(num_epochs):
+        epoch_start_time = time.time()
+        if accelerator.is_main_process: logger.info(f"--- Epoch {epoch+1}/{num_epochs} ---")
+
+        train_loss_epoch, train_corr_epoch = train_epoch(
+            model, train_dataloader, optimizer, accelerator, train_config.get('max_gradient_norm', 1.0)
+        )
+        val_loss_epoch, val_corr_epoch = validate(model, val_dataloader, accelerator)
+
+        # --- Aggregation, Logging, Checkpointing, Early Stopping (Main Process Only) ---
+        # Use accelerator.gather to collect results if needed for more precise averaging
+        # For now, rely on main process results as returned by train/validate functions
+        if accelerator.is_main_process:
+             # Ensure we have valid numbers before proceeding
+             if train_loss_epoch is None or val_loss_epoch is None:
+                  logger.error(f"Epoch {epoch+1}: Training or Validation function did not return results on main process. Cannot proceed.")
+                  break # Stop training if main process didn't get results
+
+             train_losses.append(train_loss_epoch); train_corrs.append(train_corr_epoch)
+             val_losses.append(val_loss_epoch); val_corrs.append(val_corr_epoch)
+             current_lr = optimizer.param_groups[0]['lr']; lr_values.append(current_lr)
+             epoch_duration = time.time() - epoch_start_time
+
+             logger.info(f"Epoch {epoch+1} Summary (Duration: {epoch_duration:.2f}s):")
+             logger.info(f"  Train Loss: {train_loss_epoch:.6f}, Train Corr: {train_corr_epoch:.6f}")
+             logger.info(f"  Val Loss:   {val_loss_epoch:.6f}, Val Corr:   {val_corr_epoch:.6f}")
+             logger.info(f"  Learning Rate: {current_lr:.8f}")
+
+             # Scheduler Step
+             old_lr = current_lr
+             scheduler.step(val_corr_epoch)
+             new_lr = optimizer.param_groups[0]['lr']
+             if new_lr < old_lr: logger.info(f"Learning rate reduced: {old_lr:.2e} -> {new_lr:.2e}")
+
+             # Checkpointing & Early Stopping
+             is_best = val_corr_epoch > best_val_corr + early_stopping_threshold
+             if is_best:
+                 improvement = val_corr_epoch - best_val_corr
+                 logger.info(f"  Val Corr improved! ({best_val_corr:.6f} -> {val_corr_epoch:.6f}, +{improvement:.6f}) Saving best model...")
+                 best_val_corr = val_corr_epoch; best_val_loss = val_loss_epoch
+                 patience_counter = 0
+                 best_save_dir = os.path.join(model_save_dir, 'best_model')
+                 # accelerator.wait_for_everyone() # Ensure all processes are ready before saving
+                 save_model_checkpoint(accelerator, model, optimizer, epoch, val_loss_epoch, val_corr_epoch, config, best_save_dir, is_peft=is_peft_model)
+             else:
+                 patience_counter += 1
+                 logger.info(f"  Val Corr did not improve sufficiently. Patience: {patience_counter}/{early_stopping_patience}")
+
+             # Save latest model checkpoint periodically
+             if (epoch + 1) % train_config.get('checkpoint_interval', 1) == 0:
+                 latest_save_dir = os.path.join(model_save_dir, 'latest_model')
+                 logger.info(f"Saving latest model checkpoint (Epoch {epoch+1})...")
+                 # accelerator.wait_for_everyone()
+                 save_model_checkpoint(accelerator, model, optimizer, epoch, val_loss_epoch, val_corr_epoch, config, latest_save_dir, is_peft=is_peft_model)
+
+             # Plot metrics
+             plot_metrics(train_losses, val_losses, train_corrs, val_corrs, model_save_dir, lr_values)
+
+             # Check for early stopping
+             if patience_counter >= early_stopping_patience:
+                 logger.info(f"Early stopping triggered after {epoch+1} epochs.")
+                 break # Exit the loop
+
+        # Sync all processes before starting next epoch
+        accelerator.wait_for_everyone()
+        if accelerator.device.type == 'cuda': torch.cuda.empty_cache()
+
+
+    # --- End of Training ---
+    if accelerator.is_main_process:
+        total_training_time = time.time() - start_time_train
+        logger.info("--- Training Finished ---")
+        logger.info(f"Total training time: {total_training_time:.2f}s ({total_training_time/60:.2f} minutes)")
+        logger.info(f"Best validation correlation: {best_val_corr:.6f} (Loss: {best_val_loss:.6f})")
+        logger.info(f"Checkpoints/logs saved in {model_save_dir}")
+        logger.info("--- Training Run Ended ---")
+        # Ensure logs are flushed before exiting
+        for handler in logging.getLogger().handlers:
+             handler.flush()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train ESM-C + LoRA model for RMSF prediction using Accelerate')
+    parser.add_argument('--config', type=str, default='config.yaml', help='Path to YAML config file')
+    args = parser.parse_args()
+    try:
+        with open(args.config, 'r') as f: config = yaml.safe_load(f)
+    except Exception as e: logger.error(f"Error loading config {args.config}: {e}"); exit(1)
+    try: train(config)
+    except Exception as e: logger.critical(f"Critical error during training: {e}", exc_info=True); exit(1)
+---------------------------------------------------------
+===== FILE: ./utils/__init__.py =====
+# Utility functions for the ESM-Flex project can be placed here.
+# For now, it's empty.
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+def example_util_function():
+    logger.info("This is an example utility function.")
+
+
+---------------------------------------------------------
+==========================================================
+End of ESM-flex Context Document
+==========================================================

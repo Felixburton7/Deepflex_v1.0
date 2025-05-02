@@ -1,0 +1,166 @@
+# FlexSeq Configuration with Maxed Specifications
+
+# Paths
+paths:
+  data_dir: ./data                # Data directory
+  output_dir: ./output            # Output directory
+  models_dir: ./models            # Saved models directory
+
+# Mode configuration
+mode:
+  active: "omniflex"              # Using advanced mode
+  omniflex:
+    use_esm: true                 # Use ESM embeddings feature
+    use_voxel: true               # Enable 3D voxel feature
+
+# Temperature configuration
+temperature:
+  current: 348                    # Current temperature to process
+  available: [320, 348, 379, 413, 450, "average"]
+  comparison:
+    enabled: true                 # Generate temperature comparisons
+    metrics: ["rmse", "r2", "pearson_correlation", "root_mean_square_absolute_error"]
+
+# Dataset configuration
+dataset:
+  # Data loading
+  file_pattern: "temperature_{temperature}_train.csv"
+  
+  # Domain filtering
+  domains:
+    include: []                   # Empty means include all domains
+    exclude: []                   # Domains to exclude
+    min_protein_size: 0           # Minimum protein size
+    max_protein_size: null        # Maximum protein size (null = no limit)
+  
+  # Feature configuration
+  features:
+    # Required columns that must exist in data
+    required:
+      - domain_id                 # Domain identifier
+      - resid                     # Residue ID
+      - resname                   # Residue name
+      - rmsf_{temperature}        # Target variable
+    
+    # Input features with toggles - all enabled
+    use_features:
+      protein_size: true          # Size of protein
+      normalized_resid: true      # Position in sequence
+      relative_accessibility: true # Solvent accessibility
+      core_exterior_encoded: true # Core or exterior
+      secondary_structure_encoded: true # Secondary structure
+      phi_norm: true              # Normalized phi angle
+      psi_norm: true              # Normalized psi angle
+      resname_encoded: true       # Encoded residue name
+      esm_rmsf: true              # ESM embeddings prediction (OmniFlex only)
+      voxel_rmsf: true            # 3D voxel prediction (OmniFlex only)
+    
+    # Enhanced feature engineering
+    window:
+      enabled: true               # Use window-based features
+      size: 5                     # Increased window size for better context
+
+  # Target variable
+  target: rmsf_{temperature}      # Templated with current temperature
+  
+  # Data splitting - standard split is fine
+  split:
+    test_size: 0.2                # Test set size
+    validation_size: 0.15         # Validation set size
+    stratify_by_domain: true      # Keep domains together
+    random_state: 42              # Random seed
+
+# Evaluation settings
+evaluation:
+  comparison_set: "test"          # Which set to use: "validation" or "test"
+  metrics:
+    rmse: true                    # Root Mean Squared Error
+    mae: true                     # Mean Absolute Error
+    r2: true                      # R-squared
+    pearson_correlation: true     # Pearson correlation
+    spearman_correlation: true    # Spearman rank correlation
+    root_mean_square_absolute_error: true  # Root Mean Square Absolute Error
+
+# Model configurations
+models:
+  # Shared settings
+  common:
+    cross_validation:
+      enabled: true               # Enable cross-validation for better validation
+      folds: 5                    # Number of folds if enabled
+    save_best: true               # Save best model
+  
+  # Neural Network - enhanced architecture and training
+  neural_network:
+    enabled: true                 # Run this model
+    architecture:
+      hidden_layers: [256, 128, 64]  # Larger network
+      activation: relu            # Activation function
+      dropout: 0.3                # Increased dropout for better generalization
+    training:
+      optimizer: adam             # Optimizer
+      learning_rate: 0.001        # Learning rate
+      batch_size: 64              # Increased batch size
+      epochs: 300                 # Increased max epochs
+      early_stopping: true        # Use early stopping
+      patience: 15                # Increased patience
+    hyperparameter_optimization:
+      enabled: true               # Enable hyperparameter optimization
+      method: "bayesian"          # Better optimization method
+      trials: 30                  # More trials
+      parameters:                 # Enhanced parameter space
+        hidden_layers:
+          - [64, 32]
+          - [128, 64]
+          - [256, 128]
+          - [512, 256, 128]
+          - [256, 128, 64, 32]
+          - [128, 128, 64]
+        learning_rate: [0.01, 0.005, 0.001, 0.0005, 0.0001]
+        batch_size: [32, 64, 128]
+        dropout: [0.1, 0.2, 0.3, 0.4, 0.5]
+        activation: ["relu", "leaky_relu", "tanh"]
+  
+  # Random Forest - enhanced model
+  random_forest:
+    enabled: true                 # Run this model
+    n_estimators: 500             # Increased number of trees
+    max_depth: null               # Max tree depth
+    min_samples_split: 2          # Min samples to split
+    min_samples_leaf: 1           # Min samples in leaf
+    max_features: 0.7             # Feature fraction
+    bootstrap: true               # Use bootstrapping
+    randomized_search:
+      enabled: true               # Enable RandomizedSearchCV
+      n_iter: 50                  # More parameter combinations to try
+      cv: 5                       # Increased cross-validation folds
+      param_distributions:        # Enhanced parameter distributions to search
+        n_estimators: [100, 200, 300, 500, 800]
+        max_depth: [null, 15, 30, 50, 100]
+        min_samples_split: [2, 3, 5, 8, 10]
+        min_samples_leaf: [1, 2, 3, 4, 5]
+        max_features: ["auto", "sqrt", "log2", 0.5, 0.7, 0.9]
+        bootstrap: [true, false]
+
+# Analysis and visualization
+analysis:
+  feature_importance: 
+    enabled: true                 # Analyze feature importance
+    method: "permutation"         # Use permutation importance
+    n_repeats: 20                 # Increased permutation repetitions
+    use_validation_data: true     # Use validation data for importance calculation
+  
+  temperature_comparison:
+    enabled: true                 # Compare results across temperatures
+    metrics: ["rmse", "r2", "pearson_correlation", "root_mean_square_absolute_error"]
+    plots:
+      histogram: true             # Generate histogram plots
+      correlation: true           # Generate correlation plots
+      performance: true           # Generate performance comparison plots
+
+# System settings
+system:
+  n_jobs: -1                      # Use all available cores
+  random_state: 42                # Global random seed
+  log_level: INFO                 # Logging level
+  gpu_enabled: auto               # Auto-detect GPU

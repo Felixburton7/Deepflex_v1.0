@@ -1,0 +1,17 @@
+
+# Core ML/DL
+torch>=1.10.0 #,<2.3.0 # Specify a range compatible with your CUDA version
+esm>=2.0.0 # Evolutionary Scale Modeling library (check latest version if needed)
+transformers>=4.30.0 # Keep as 'esm' might use it internally
+accelerate>=0.20.0 # Often useful with transformers
+tokenizers>=0.13.0   # Keep as 'esm' might use it internally
+# accelerate>=0.20.0 # Probably not needed directly now
+
+# Data Handling & Utilities
+numpy>=1.20.0
+pandas>=1.3.0
+pyyaml>=5.4
+tqdm>=4.60.0
+
+# Plotting
+matplotlib>=3.4.0

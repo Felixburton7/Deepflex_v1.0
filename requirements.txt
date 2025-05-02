@@ -1,0 +1,117 @@
+
+#
+# ----------------
+# 1. conda create -n esmc_env python=3.10 -y
+# 2. conda activate esmc_env
+# 3. conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y (Adjust CUDA version if needed)
+# 4. conda install biopython -y  (Installed 1.78 initially)
+# 5. pip install esm           (Installed esm==3.2.0 and dependencies)
+# 6. pip install --upgrade biopython (Likely upgraded to fix import errors, e.g., to 1.81 or later)
+accelerate>=0.20.0
+accelerate>=0.20.0 # Often useful with transformers
+# accelerate>=0.20.0 # Probably not needed directly now
+accelerate>=0.25.0 # Helper for device management, mixed precision
+biopython>=1.81      # Needs a version newer than 1.78 to resolve import errors (use pip to upgrade/install)
+biotite>=1.0.0       # Used in esm.utils, dependency of esm (e.g., 1.2.0 was installed)
+# black
+black>=21.5b2# VoxelFlex Core Dependencies
+colorama>=0.4.4  # For colored terminal output (optional)
+# Core dependencies
+# Core ML/DL
+# --- Core ML Framework ---
+# Data Handling & Utilities
+# Development dependencies
+einops               # Used by some attention/transformer layers (e.g., 0.8.1 was installed)
+# Enhanced logging dependencies
+# Environment specification for running evolutionaryscale/esm (ESM-C models).
+esm>=2.0.0 # Evolutionary Scale Modeling library (check latest version if needed)
+esm>=2.0.0 # Meta/EvolutionaryScale ESM library (installed via 'pip install esm')
+esm>=2.0.0 # Native ESM library from Meta
+esm==3.2.0           # The main library from evolutionaryscale
+# --- ESM Library and Direct Dependencies ---
+# Example for CPU only: pip install torch torchvision torchaudio
+# Example for CUDA 11.8: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Example for CUDA 12.1: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# flake8
+flake8>=3.9.0
+# flash-attn>=2.0.0
+# Generated based on a successful installation using:
+h5py
+h5py>=3.1.0
+huggingface-hub>=0.24.0,<1.0 # Dependency for model/token downloads (e.g., 0.30.2 was installed)
+# - If you encounter BioPython import errors after initial install, run:
+# - Install PyTorch with the correct CUDA version via conda first.
+# Install separately: pip install flash-attn --no-build-isolation
+# isort
+# It's recommended to install PyTorch via conda *first* as specified above,
+matplotlib
+matplotlib>=3.3.0
+matplotlib>=3.4.0
+matplotlib>=3.4.0# Core ML/DL
+matplotlib>=3.4.0    # For plotting (likely needed for evaluate/predict scripts)
+matplotlib>=3.5.0
+# mypy
+# --- Notes ---
+numpy>=1.20.0
+numpy>=1.21
+numpy>=1.21.0
+numpy>=1.25          # Fundamental numerical library (e.g., 1.26.4 was installed)
+# Optional but recommended for development/testing:
+# --- Optional but Recommended for ESM Features ---
+# Optional but recommended for performance
+# Optional: For hyperparameter tuning
+# optuna
+# --- Other Key Dependencies often used with ESM or found in ESM-Flex ---
+pandas>=1.3
+pandas>=1.3.0
+pandas>=1.3.0        # For data manipulation (e.g., 2.2.3 was installed)
+pandas>=1.4.0
+peft>=0.8.0 # For LoRA and other PEFT methods
+# Pin versions for better reproducibility, update as needed.
+#   pip install --upgrade biopython
+# Plotting
+psutil
+psutil>=5.8.0  # For memory usage tracking
+pyarrow
+# pytest
+pytest>=6.0.0
+pytest-cov>=2.12.0
+# PyTorch: Choose version compatible with your CUDA toolkit if using GPU
+pyyaml
+pyyaml>=5.1
+pyyaml>=5.4
+pyyaml>=6.0
+pyyaml>=6.0          # For handling config.yaml files (e.g., 6.0.2 was installed)
+# ray[tune]
+# requirements.txt
+safetensors>=0.4.1   # Dependency for model weight loading
+scikit-learn
+scikit-learn>=0.24.0
+scikit-learn>=1.0.0  # For evaluation metrics (e.g., 1.6.1 was installed)
+scikit-learn>=1.0.0 # For potential metrics/utilities
+scipy
+scipy>=1.6.0
+scipy>=1.7.0         # Often used with scikit-learn/numpy (e.g., 1.15.2 was installed)
+seaborn
+seaborn>=0.11.0
+seaborn>=0.11.0 # Often used with matplotlib for better aesthetics
+seaborn # Often used with matplotlib for nicer plots
+# then install the rest using this file: pip install -r requirements.txt
+tokenizers>=0.13.0
+tokenizers>=0.13.0   # Keep as 'esm' might use it internally
+tokenizers>=0.21,<0.22   # Specific requirement from esm/transformers (e.g., 0.21.1 was installed)
+torch>=1.10.0
+torch>=1.10.0 #,<2.3.0 # Check compatibility with your CUDA version
+torch>=1.10.0 #,<2.3.0 # Specify a range compatible with your CUDA version
+torch>=2.0.0 # Need a recent version for better PEFT/Flash Attention support
+torch==2.5.1         # PyTorch version installed via conda (CUDA version handled by conda install)
+torchaudio==2.5.1    # Usually installed alongside PyTorch
+torchvision==0.20.1  # Usually installed alongside PyTorch
+tqdm
+tqdm>=4.27           # For progress bars
+tqdm>=4.60.0
+transformers>=4.30.0
+transformers>=4.30.0 # Keep as 'esm' might use it internally
+transformers>=4.35.0 # Often needed by PEFT/ESM
+transformers<4.48.2,>=4.0.0 # Specific requirement from esm 3.2.0 (e.g., 4.48.1 was installed)
+# transformers, accelerate, tokenizers might be needed by esm internally

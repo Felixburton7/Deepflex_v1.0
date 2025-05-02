@@ -1,0 +1,82 @@
+# Configuration for ESM-Flex Temperature-Aware Project (Enhanced)
+
+data:
+  # Path to the directory containing processed data splits
+  data_dir: data/processed
+  # Path to the enriched CSV file with additional features
+  # raw_csv_path: /home/s_felix/drDataScience/data/analysis_complete_holdout_dataset.csv
+  # raw_csv_path: /home/s_felix/FINAL_PROJECT/latest_drDS/drDataScience/data/ATLAS_final_analysis_dataset_filtered.csv
+  raw_csv_path: /home/s_felix/FINAL_PROJECT/packages/DeepFlex/data/raw/aggregated_train_dataset.csv
+  # Path where temperature scaling parameters (min/max) will be saved/loaded from data_dir
+  temp_scaling_filename: temp_scaling_params.json
+  # Feature selection configuration
+  features:
+    # Core structural features
+    use_position_info: true        # normalized_resid
+    use_structure_info: true       # secondary_structure_encoded, core_exterior_encoded
+    use_accessibility: true        # relative_accessibility
+    use_backbone_angles: true      # phi_norm, psi_norm
+    use_protein_size: true         # protein_size
+    use_voxel_rmsf: true           # voxel_rmsf
+    use_bfactor: true              # bfactor_norm
+    # Feature normalization parameters will be saved here
+    normalization_params_file: feature_normalization.json
+
+model:
+  # Identifier for the ESM-C model from the 'esm' library.
+  esm_version: "esmc_600m"
+
+  # Enhanced architecture options
+  architecture:
+    use_enhanced_features: true    # Use additional features beyond sequence and temperature
+    use_attention: true            # Use self-attention for sequence processing
+    attention_heads: 8             # Number of attention heads
+    attention_dropout: 0.1         # Dropout rate for attention layers
+    improved_temp_integration: true # Use advanced temperature integration
+
+  # Regression head configuration
+  regression:
+    # Hidden dimension for the MLP head. Set to 0 for a direct Linear layer.
+    hidden_dim: 128                # Increased for enhanced model
+    # Dropout rate for the regression head
+    dropout: 0.1
+
+training:
+  # Number of training epochs
+  num_epochs: 50
+  # Batch size (adjust based on GPU memory and model size)
+  batch_size: 8
+  # Learning rate for the optimizer
+  learning_rate: 1.0e-4
+  # Weight decay for the optimizer (applied only to non-bias/norm params)
+  weight_decay: 0.01
+  # AdamW epsilon parameter
+  adam_epsilon: 1.0e-8
+  # Gradient accumulation steps (effective_batch_size = batch_size * accumulation_steps)
+  accumulation_steps: 4
+  # Max gradient norm for clipping (0 to disable)
+  max_gradient_norm: 1.0
+  # Learning rate scheduler patience (epochs) based on validation correlation
+  scheduler_patience: 5
+  # Early stopping patience (epochs) based on validation correlation
+  early_stopping_patience: 10
+  # Random seed for reproducibility
+  seed: 42
+  # Optional: Maximum sequence length to process (helps manage memory)
+  # max_length: 1024
+  # Size of length buckets for grouping similar-length sequences in dataloader
+  length_bucket_size: 50
+  # Frequency (in epochs) to save intermediate checkpoints
+  checkpoint_interval: 5
+
+output:
+  # Directory to save trained models, logs, plots, and scaling parameters
+  model_dir: models
+
+# Prediction settings (used by predict.py if called via main.py)
+prediction:
+  batch_size: 8 # Can often be larger than training batch size
+  plot_predictions: true
+  smoothing_window: 1 # Window size for smoothing plots (1 = no smoothing)
+  # Optional: max_length for prediction if different from training
+  # max_length: 1024

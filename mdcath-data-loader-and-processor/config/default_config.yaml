@@ -1,0 +1,89 @@
+# Default configuration for the mdCATH Processor pipeline
+
+# Input Data Configuration
+input:
+  mdcath_folder: "/mnt/datasets/MD_CATH/data" # *** IMPORTANT: Set this path ***
+  domain_ids: null   # List of specific domain IDs to process, or null/empty to process all found HDF5 files in mdcath_folder
+                      # Example: ["1a02F00", "16pkA02"]
+
+# Output Configuration
+output:
+  base_dir: "./outputs" # Root directory for all generated files
+  flatten_rmsf_dirs: true # Controls RMSF output structure (True flattens replica/temp folders)
+
+# Processing Parameters
+processing:
+  # Frame selection from simulation trajectories
+  frame_selection:
+    method: "rmsd"    # Options: 'regular', 'rmsd', 'gyration', 'random', 'last'
+    num_frames: 0     # Number of frames to extract per domain/temperature/replica
+    cluster_method: "kmeans" # Method for RMSD-based selection ('kmeans' currently supported)
+
+  # PDB Cleaning options
+  pdb_cleaning:
+    # Tool selection ('pdbutils' preferred, 'fallback' uses internal logic)
+    tool: "pdbutils" # Options: 'pdbutils', 'fallback'
+    replace_chain_0_with_A: true
+    fix_atom_numbering: true
+    correct_unusual_residue_names: true # HSD/HSE/HSP -> HIS
+    stop_after_ter: true # Stop reading PDB after the first TER record
+    remove_hydrogens: false # Keep hydrogen atoms by default
+    remove_solvent_ions: true # Remove common water (TIP, HOH) and ions (SOD, CLA), etc.
+
+  # Structure Properties Calculation (DSSP/SASA etc.)
+  properties_calculation:
+    # External DSSP executable name (searched in PATH)
+    dssp_executable: "dssp" # Can be 'dssp' or 'mkdssp'
+    # Fallback method if DSSP executable fails/not found ('biopython' uses ShrakeRupley)
+    fallback_method: "biopython"
+    # SASA threshold for Core/Exterior classification using Biopython fallback (Å²)
+    # Note: The PropertiesCalculator now uses a relative ASA threshold of 0.20 by default
+    sasa_threshold_fallback_absolute: 20.0 # Threshold for absolute SASA only if relative calculation fails completely
+
+  # Feature Building options
+  feature_building:
+    # If true, adds log-transformed RMSF column (e.g., rmsf_log)
+    add_rmsf_log: true
+
+  # Voxelization using Aposteriori
+  voxelization:
+    enabled: true # Set to false to skip voxelization step
+    # Path to aposteriori's 'make-frame-dataset' executable (if not in PATH)
+    aposteriori_executable: null # Default: search in PATH
+    # Parameters for 'make-frame-dataset'
+    frame_edge_length: 12.0  # Angstroms
+    voxels_per_side: 21
+    atom_encoder: "CNOCBCA"  # Options: CNO, CNOCB, CNOCACB
+    encode_cb: true
+    compression_gzip: true
+    voxelise_all_states: false # For NMR structures
+    output_name: "mdcath_voxelized" # Base name for the output HDF5 file
+
+# Performance Configuration
+performance:
+  # Number of parallel processes (0 uses os.cpu_count() - 4, 1 disables parallelism)
+  num_cores: 6
+  # Optional: Batch size for processing domains in memory-intensive steps (e.g., feature building)
+  # null means process domain-by-domain or let the step decide its internal logic.
+  batch_size: null # Example: 50
+
+# Logging Configuration
+logging:
+  # Overall level for logs written to file
+  log_level_file: "DEBUG"
+  # Overall level for logs printed to console
+  log_level_console: "INFO"
+  # Path to the log file (relative to output.base_dir/logs)
+  log_filename: "pipeline.log"
+  # Show tqdm progress bars
+  show_progress_bars: true
+
+# Visualization Configuration
+visualization:
+  enabled: true # Set to false to skip generating plots
+  dpi: 300 # Resolution for saved figures
+  # Color palette (see seaborn/matplotlib documentation)
+  palette: "colorblind" # e.g., "viridis", "colorblind", "deep", "muted"
+  # Histogram binning strategy ('auto', or an integer number of bins)
+  histogram_bins: 50
+

@@ -1,0 +1,25 @@
+# VoxelFlex Core Dependencies
+# Pin versions for better reproducibility, update as needed.
+numpy>=1.21
+pandas>=1.3
+# PyTorch: Choose version compatible with your CUDA toolkit if using GPU
+# Example for CUDA 11.8: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# Example for CUDA 12.1: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Example for CPU only: pip install torch torchvision torchaudio
+torch>=1.10.0
+scipy
+scikit-learn
+h5py
+pyyaml
+matplotlib
+seaborn
+psutil
+tqdm
+pyarrow
+
+# Optional but recommended for development/testing:
+# pytest
+# flake8
+# black
+# isort
+# mypy

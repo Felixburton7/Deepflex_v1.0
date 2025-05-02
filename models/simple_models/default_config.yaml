@@ -1,0 +1,214 @@
+# # ensembleflex Configuration (Refactored from FlexSeq)
+# Single, unified, temperature-aware model trained on aggregated data.
+
+# Paths (Generalized - No temperature templating needed)
+paths:
+  data_dir: ./data               # Data directory
+  output_dir: ./output/ensembleflex/  # Unified output directory for this model
+  models_dir: ./models/ensembleflex/  # Unified models directory for this model
+
+# Mode configuration (Remains the same)
+mode:
+  active: "omniflex"              # "standard" or "omniflex"
+  omniflex:
+    use_esm: true                 # Use ESM embeddings feature
+    use_voxel: true               # Enable 3D voxel feature
+
+# Temperature configuration (Simplified)
+temperature:
+  available: [320, 348, 379, 413, 450] # INFORMATIONAL ONLY - List of temps in original data
+  comparison:                     # PURPOSE REDEFINED - Analyze single model's sensitivity to temp feature
+    enabled: true                 # Analyze sensitivity to input temperature
+    # Metrics can be calculated on test set binned by the 'temperature' column
+    metrics: ["rmse", "r2", "pearson_correlation", "root_mean_square_absolute_error"]
+
+# Dataset configuration (Updated for aggregated data)
+dataset:
+  # Data loading
+  file_pattern: "aggregated_train_dataset.csv" # Points to single aggregated train file
+
+  # Domain filtering (Remains the same)
+  domains:
+    include: []                   # Empty means include all domains
+    exclude: []                   # Domains to exclude
+    min_protein_size: 0           # Minimum protein size (based on unique residues per domain)
+    max_protein_size: null        # Maximum protein size (null = no limit)
+
+  # Feature configuration (Updated)
+  features:
+    # Required columns that must exist in the aggregated data
+    required:
+      - domain_id                 # Domain identifier
+      - resid                     # Residue ID
+      - resname                   # Residue name
+      - rmsf                      # UPDATED - Unified target variable
+      - temperature               # ADDED - Temperature feature
+      - bfactor_norm
+
+    # Input features with toggles - ADD 'temperature'
+    use_features:
+      protein_size: true          # Size of protein
+      normalized_resid: true      # Position in sequence
+      relative_accessibility: true # Solvent accessibility (Example: disabled)
+      core_exterior_encoded: true # Core or exterior (Example: disabled)
+      secondary_structure_encoded: true # Secondary structure (Example: disabled)
+      phi_norm: true              # Normalized phi angle (Example: disabled)
+      psi_norm: true              # Normalized psi angle (Example: disabled)
+      resname_encoded: true       # Encoded residue name
+      temperature: true           # ADDED & ENABLED - Include temperature as feature
+      esm_rmsf: true              # ESM embeddings prediction (OmniFlex only)
+      voxel_rmsf: true            # 3D voxel prediction (OmniFlex only)
+      bfactor_norm: true
+
+    # Enhanced feature engineering (Remains the same conceptually)
+    window:
+      enabled: false               # Use window-based features
+      size: 0                    # Increased window size for better context
+
+  # Target variable (Updated)
+  target: rmsf                    # UPDATED - Unified target column name
+
+  # Data splitting (Remains the same conceptually)
+  split:
+    test_size: 0.05                # Test set size
+    validation_size: 0.1         # Validation set size
+    stratify_by_domain: true      # Keep domains together (RECOMMENDED)
+    random_state: 42              # Random seed
+
+# Evaluation settings (Remains the same)
+evaluation:
+  comparison_set: "test"          # Which set to use: "validation" or "test"
+  metrics:
+    rmse: true                    # Root Mean Squared Error
+    mae: true                     # Mean Absolute Error
+    r2: true                      # R-squared
+    pearson_correlation: true     # Pearson correlation
+    spearman_correlation: true    # Spearman rank correlation
+    root_mean_square_absolute_error: true  # Root Mean Square Absolute Error
+
+# Model configurations 
+models:
+  # Shared settings
+  common:
+    cross_validation:
+      enabled: true               # Enable cross-validation for better validation
+      folds: 5                    # Number of folds if enabled
+    save_best: true               # Save best model
+
+  # Neural Network - enhanced architecture and training
+  neural_network:
+    enabled: true                 # Run this model
+    architecture:
+      hidden_layers: [256, 128, 64]  # Larger network
+      activation: relu            # Activation function
+      dropout: 0.3                # Increased dropout for better generalization
+    training:
+      optimizer: adam             # Optimizer
+      learning_rate: 0.001        # Learning rate
+      batch_size: 256              # Increased batch size
+      epochs: 3                  # Increased max epochs
+      early_stopping: true        # Use early stopping
+      patience: 5                 # Increased patience
+    hyperparameter_optimization:
+      enabled: false              # Enable hyperparameter optimization
+      method: "random"            # Better optimization method
+      trials: 5                   # More trials
+      parameters:                 # Enhanced parameter space
+        hidden_layers:
+          - [64, 32]
+          - [128, 64]
+          - [256, 128]
+          - [512, 256, 128]
+          - [256, 128, 64, 32]
+          - [128, 128, 64]
+        learning_rate: [0.01, 0.005, 0.001, 0.0005, 0.0001]
+        batch_size: [32, 64, 128]
+        dropout: [0.1, 0.2, 0.3, 0.4, 0.5]
+        activation: ["relu", "leaky_relu", "tanh"]
+
+  random_forest:
+    enabled: true
+    # Core parameters (These are less important when HPO is enabled,
+    # as HPO finds the best ones, but good to have reasonable defaults)
+    n_estimators: 150              # Default if HPO disabled
+    max_depth: 25                  # Default if HPO disabled
+    min_samples_split: 10
+    min_samples_leaf: 5
+    max_features: 'sqrt'
+    bootstrap: true
+    verbose: 1                     # Shows progress within each fit
+    n_jobs: -12                     # USE ALL CORES - Standard practice
+
+    # HPO configuration - Faster search
+    randomized_search:
+      enabled: false
+      n_iter: 8                   
+      cv: 2                        # Keep 2 folds for speed
+      param_distributions:
+        n_estimators: [50, 150, 250]   
+        max_depth: [10, 15, 20]        
+        min_samples_split: [10, 20]    # Focus on simpler trees
+        min_samples_leaf: [5, 10]      # Focus on simpler trees
+        max_features: ['sqrt', 0.4]    # Simpler search, includes 'sqrt'
+
+
+  #LightGBM
+  lightgbm:
+    enabled: true                 # <<< ENABLE LIGHTGBM
+    objective: 'regression_l1'    # MAE loss - often good for RMSF/distances
+    metric: 'mae'                 # Evaluate using MAE during training
+    n_estimators: 1500            # Start high, rely on early stopping
+    learning_rate: 0.02           # Typical learning rate
+    num_leaves: 35                # Default, good starting point
+    max_depth: -1                 # No limit on depth
+    reg_alpha: 0.05               # L1 regularization
+    reg_lambda: 0.05              # L2 regularization
+    colsample_bytree: 0.8         # Feature fraction per tree
+    subsample: 0.8                # Data fraction per tree (row sampling)
+    # boosting_type: 'gbdt'       # Default, others: 'dart', 'goss'
+    n_jobs: -10                    # Use all cores
+    random_state: 42              # Seed for reproducibility
+    # Early stopping configuration for LightGBM
+    early_stopping:
+      enabled: true               # Enable early stopping based on validation set
+      stopping_rounds: 50         # Number of rounds with no improvement to stop
+      # verbose: false            # Log LightGBM's internal early stopping messages? (can be noisy)
+    # Hyperparameter Optimization (Placeholder - Not implemented in model class yet)
+    # hyperparameter_optimization:
+    #   enabled: false
+    #   method: "bayesian" # e.g., using Optuna
+    #   trials: 50
+    #   parameters:
+    #     num_leaves: [15, 31, 63, 127]
+    #     learning_rate: [0.01, 0.03, 0.05, 0.1]
+    #     n_estimators: [500, 1000, 1500, 2000]
+    #     reg_alpha: [0, 0.01, 0.1, 0.5]
+    #     reg_lambda: [0, 0.01, 0.1, 0.5]
+    #     colsample_bytree: [0.6, 0.7, 0.8, 0.9, 1.0]
+    #     subsample: [0.6, 0.7, 0.8, 0.9, 1.0]
+
+# Analysis and visualization (Purpose redefined for temp comparison)
+analysis:
+  feature_importance:
+    enabled: true                 # Analyze feature importance (will include 'temperature')
+    method: "permutation"         # Use permutation importance
+    n_repeats: 20                 # Increased permutation repetitions
+    use_validation_data: true     # Use validation data for importance calculation
+
+  temperature_comparison:         # PURPOSE REDEFINED
+    enabled: true                 # Analyze the single model's sensitivity to the input 'temperature' feature
+    # Metrics applied to test set predictions, potentially binned by 'temperature' column values
+    metrics: ["rmse", "r2", "pearson_correlation", "root_mean_square_absolute_error"]
+    plots:                        # Plots should focus on error/prediction vs temperature feature
+      histogram: true             # Generate histogram plots (overall RMSF, maybe binned errors)
+      correlation: false          # Correlation between temps less relevant now
+      performance: true           # Generate performance vs input temp plots
+      error_vs_temp: true         # Explicitly plot error metrics vs input temperature
+      prediction_vs_temp: true    # Explicitly plot predictions vs input temperature
+
+# System settings (Remains the same)
+system:
+  n_jobs: -1                      # Use all available cores
+  random_state: 42                # Global random seed
+  log_level: INFO                 # Logging level
+  gpu_enabled: auto               # Auto-detect GPU

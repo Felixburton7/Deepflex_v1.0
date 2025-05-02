@@ -1,0 +1,74 @@
+# === FILE: config.yaml ===
+# Configuration for ESM-Flex Project using ESM-C and LoRA
+
+data:
+  data_dir: data/processed
+  raw_csv_path: data/raw/temperatuer_320_train.csv # <-- ADJUST THIS PATH if needed
+  non_standard_residue_handling: 'ignore'
+
+model:
+  esm_version: "esmc_600m" # Adjust as needed (e.g., esmc_300m)
+
+  # --- LoRA Configuration ---
+  lora:
+    enabled: true
+
+    # --- Option 1: Increase Rank/Alpha ---
+    # Higher rank allows more complex adaptations but uses more memory.
+    # Common values: 8, 16, 32, 64. Start lower and increase if needed.
+    r: 32 # Current rank (Example: try 32 or 64 next)
+    # Alpha is often set to r or 2*r.
+    lora_alpha: 68 # Current alpha (Example: try 64 or 128 if r is increased)
+
+    lora_dropout: 0.1
+
+    # --- Option 2: Target More Modules ---
+    # Add more layer types to adapt. Requires VERIFYING exact names via print(model).
+    # Example: Target attention projections AND feed-forward layers
+    target_modules: ["q_proj", "k_proj", "v_proj", "out_proj", "fc1", "fc2"]
+    # target_modules: ["q_proj", "k_proj", "v_proj", "out_proj"] 
+
+  # --- Regression Head ---
+  regression:
+    hidden_dim: 32 # Hidden dim of the small MLP head (0 for linear)
+    dropout: 0.1   # Dropout in the regression head
+
+# --- Training Configuration ---
+training:
+  num_epochs: 50
+  batch_size: 4 # Adjust based on VRAM
+  # Learning Rate: May need adjustment if changing LoRA rank/targets significantly
+  # (e.g., lower LR if targeting many more modules or using much higher rank)
+  learning_rate: 5.0e-5
+  weight_decay: 0.01
+  adam_epsilon: 1.0e-8
+  accumulation_steps: 8 # Effective batch size = batch_size * accumulation_steps
+  max_gradient_norm: 1.0
+  use_amp: true # Use Mixed Precision (requires PyTorch >= 1.6)
+  use_flash_attn: true # Set to false if flash-attn not installed or causing issues
+
+  # Scheduler: ReduceLROnPlateau based on validation correlation
+  scheduler_factor: 0.5
+  scheduler_patience: 3
+  scheduler_threshold: 0.001 # How much correlation must improve to reset patience
+  scheduler_mode: 'max'
+
+  # Early Stopping: Based on validation correlation
+  early_stopping_patience: 10
+  early_stopping_threshold: 0.0005 # Min improvement to reset patience
+
+  seed: 42
+  # max_length: 1024 # Optional: Limit sequence length during training/loading
+  length_bucket_size: 50 # For efficient batching by length
+  checkpoint_interval: 5 # Save intermediate checkpoints every N epochs
+
+# --- Output Directory ---
+output:
+  model_dir: models # Checkpoints, logs, plots saved here
+
+# --- Prediction Settings ---
+prediction:
+  batch_size: 8
+  plot_predictions: true
+  smoothing_window: 1 # 1 = no smoothing
+  # max_length: 1024 # Optional: Limit sequence length during prediction

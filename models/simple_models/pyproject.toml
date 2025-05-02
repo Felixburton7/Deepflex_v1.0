@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ensembleflex"
+version = "0.1.0"
+description = "ML pipeline for protein flexibility prediction with multi-temperature analysis"
+readme = "README.md"
+authors = [
+  { name = "Felix Burton", email = "felixburton2002@gmail.com" }
+]
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+dependencies = [
+  "numpy>=1.20.0",
+  "pandas>=1.3.0",
+  "scikit-learn>=1.0.0",
+  "torch>=1.9.0",
+  "pyyaml>=6.0",
+  "click>=8.0.0",
+  "matplotlib>=3.4.0",
+  "seaborn>=0.11.0",
+  "joblib>=1.0.0",
+  "tqdm>=4.64.0",
+  "optuna>=3.0.0",  # <-- ADDED COMMA HERE
+  "lightgbm>=3.0.0"
+]
+
+[project.scripts]
+ensembleflex = "ensembleflex.cli:cli"
+
+[project.urls]
+Homepage = "
+"Bug Tracker" = "/issues"

@@ -1,0 +1,65 @@
+# Configuration for ESM-Flex Project using ESM-3
+
+data:
+  # Path to the directory containing processed data splits
+  data_dir: data/processed
+  # Path to the raw CSV file (used by data_processor.py)
+  raw_csv_path: data/raw/rmsf_replica_average_temperature_320_fixed.csv
+
+
+model:
+  # Identifier for the ESM-C model from the 'esm' library.
+  # Examples: "esmc_35m", "esmc_150m", "esmc_300m", "esmc_600m"
+  # See esm library documentation for available models.
+  esm_version: "esmc_600m" # <--- CORRECT identifier for ESMC.from_pretrained
+
+  # Regression head configuration
+  regression:
+    # Hidden dimension for the MLP head. Set to 0 for a direct Linear layer.
+    hidden_dim: 32
+    # Dropout rate for the regression head
+    dropout: 0.1
+
+training:
+  # Number of training epochs
+  num_epochs: 2
+  # Batch size (adjust based on GPU memory and model size)
+  batch_size: 16
+  # Learning rate for the optimizer
+  learning_rate: 1.0e-4 # Note: Can be higher since only head is trained
+  # Weight decay for the optimizer (applied only to non-bias/norm params)
+  weight_decay: 0.01
+  # AdamW epsilon parameter
+  adam_epsilon: 1.0e-8
+  # Gradient accumulation steps (effective_batch_size = batch_size * accumulation_steps)
+  accumulation_steps: 4
+  # Max gradient norm for clipping (0 to disable)
+  max_gradient_norm: 1.0
+  # Learning rate scheduler patience (epochs) based on validation correlation
+  scheduler_patience: 5
+  # Early stopping patience (epochs) based on validation correlation
+  early_stopping_patience: 10
+  # Random seed for reproducibility
+  seed: 42
+  # Optional: Maximum sequence length to process (helps manage memory)
+  # max_length: 1024 # Uncomment and set value if needed
+  # Size of length buckets for grouping similar-length sequences in dataloader
+  length_bucket_size: 50
+  # Frequency (in epochs) to save intermediate checkpoints
+  checkpoint_interval: 5
+
+output:
+  # Directory to save trained models, logs, and plots
+  model_dir: models
+
+# Prediction settings (used by predict.py if called via main.py)
+prediction:
+  batch_size: 8 # Can often be larger than training batch size
+  plot_predictions: true
+  smoothing_window: 1 # Window size for smoothing plots (1 = no smoothing)
+  # Optional: max_length for prediction if different from training
+  # max_length: 1024
+
+# Dependencies Note:
+# This project now requires 'transformers', 'tokenizers', 'accelerate', 'torch'
+# The 'fair-esm' library is no longer needed.

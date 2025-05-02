@@ -1,0 +1,62 @@
+input:
+  voxel_file: input_data/voxel/mdcath_voxelized.hdf5
+  aggregated_rmsf_file: input_data/rmsf/aggregated_rmsf_all_temps.csv
+  train_split_file: input_data/train_domains.txt
+  val_split_file: input_data/val_domains.txt
+  test_split_file: input_data/test_domains.txt
+  max_domains: 10  # Limit to 10 domains per split for testing
+
+data:
+  processed_dir: input_data/processed/
+  master_samples_file: "master_samples.parquet"
+  temp_scaling_params_file: "temp_scaling_params.json"
+
+output:
+  base_dir: outputs/
+  run_name: "test_run_{timestamp}"
+  log_file: voxelflex.log
+
+model:
+  architecture: multipath_rmsf_net  # This is faster than densenet
+  input_channels: 5
+  voxel_depth: 21
+  voxel_height: 21
+  voxel_width: 21
+  base_filters: 16  # Smaller than default
+  num_residual_blocks: 2  # Fewer blocks for faster training
+  dropout_rate: 0.3
+
+training:
+  chunk_size: 5  # Small chunk size for testing 
+  batch_size: 16
+  num_epochs: 2  # Just 2 epochs for quick testing
+  learning_rate: 0.001
+  weight_decay: 1e-4
+  seed: 42
+  num_workers: 2  # Fewer workers for testing
+  mixed_precision:
+    enabled: true
+
+prediction:
+  batch_size: 64
+
+evaluation:
+  calculate_stratified_metrics: true
+  calculate_permutation_importance: false  # Skip this for faster testing
+  sasa_bins: [0.0, 0.1, 0.4, 1.01]
+
+logging:
+  level: INFO
+  console_level: INFO
+  file_level: DEBUG
+  show_progress_bars: true
+  log_memory_usage: true
+
+visualization:
+  plot_loss: true
+  plot_correlation: true
+  plot_predictions: true
+  plot_density_scatter: true
+  plot_error_distribution: true
+  save_format: png
+  dpi: 100

@@ -1,0 +1,96 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data files
+*.hdf5
+*.h5
+*.parquet
+*.sqlite
+*.db
+*.pdb
+*.csv
+
+# **/data/raw/*
+*.npy
+*.npz
+*.pkl
+*.pickle
+
+# Model files - uncomment if you don't want to include models in the repo
+*.pt
+*.pth
+*.safetensors
+*.onnx
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*_env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+**/logs/
+tensorboard/
+runs/
+
+# Checkpoints
+**/checkpoints/
+
+# Visualization outputs
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.pdf
+
+# Project-specific
+**/predictions/**/plots/
+**/output_example/
+**/.ipynb_checkpoints/
+temp_*
+
+# Misc
+.coverage
+htmlcov/
+.pytest_cache/
+.hypothesis/

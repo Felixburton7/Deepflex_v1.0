@@ -1,0 +1,21 @@
+# Core ML/DL
+torch>=2.0.0 # Need a recent version for better PEFT/Flash Attention support
+esm>=2.0.0 # Meta/EvolutionaryScale ESM library (installed via 'pip install esm')
+peft>=0.8.0 # For LoRA and other PEFT methods
+transformers>=4.35.0 # Often needed by PEFT/ESM
+accelerate>=0.25.0 # Helper for device management, mixed precision
+
+# Optional but recommended for performance
+# Install separately: pip install flash-attn --no-build-isolation
+# flash-attn>=2.0.0
+
+# Data Handling & Utilities
+numpy>=1.21.0
+pandas>=1.4.0
+pyyaml>=6.0
+tqdm>=4.60.0
+scikit-learn>=1.0.0 # For potential metrics/utilities
+
+# Plotting
+matplotlib>=3.5.0
+seaborn>=0.11.0 # Often used with matplotlib for better aesthetics

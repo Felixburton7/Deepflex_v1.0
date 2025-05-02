@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdcath-processor"
+version = "0.1.1" # Incremented version
+authors = [
+  { name="Your Name", email="your.email@example.com" },
+]
+description = "Processor for mdCATH dataset to generate ML features and visualizations."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Development Status :: 3 - Alpha",
+]
+dependencies = [
+    # Copied from requirements.txt - Keep these in sync!
+    "h5py>=3.1.0",
+    "numpy>=1.26.4", # Updated version
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0",
+    "biopython>=1.79",
+    "pdbUtils>=2.0", # Specify correct version if known
+    "PyYAML>=6.0",
+    "tqdm>=4.60.0",
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "statsmodels>=0.14.0", # Added dependency
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your_username/mdcath-processor" # Add your repo URL
+"Bug Tracker" = "https://github.com/your_username/mdcath-processor/issues" # Add your repo URL
+
+[project.scripts]
+mdprocess = "mdcath.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
