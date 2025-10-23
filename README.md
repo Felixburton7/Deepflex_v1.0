@@ -1,4 +1,4 @@
-# 🧬 drWiggle Junior: Temperature-Aware Protein Flexibility Prediction
+# 🧬 DeepFlex Temperature-Aware Protein Flexibility Prediction
 
 
 
