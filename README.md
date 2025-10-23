@@ -5,7 +5,7 @@
 ## 📂 Repository Structure & Component Overview
 
 <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-This repository brings together several approaches for predicting protein flexibility (RMSF) with temperature awareness. Here's a quick guide to the main components:
+These repositories are the (slighlty messy) public repositories of my final year research Project at the University of Edinburgh. A clean/final DeepFlex is currently being worked on before publication. 
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
