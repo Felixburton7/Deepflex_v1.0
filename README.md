@@ -1,4 +1,4 @@
-# 🧬 DeepFlex Temperature-Aware Protein Molecular Dynamics Prediction
+# 🧬 DeepFlex: 
 
 
 
