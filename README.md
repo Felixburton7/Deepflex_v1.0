@@ -4,14 +4,13 @@
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
 </div>
 
-**DeepFlex** bridges the gap between static protein structures (crystallography/AlphaFold) and dynamic biological reality. While protein flexibility is essential for understanding enzymatic function, allostery, and drug binding, accurate estimation typically requires computationally prohibitive Molecular Dynamics (MD) simulations.
 
-This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles in milliseconds rather than weeks.
+This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
 
 ### Key Contributions:
 *   **Surrogate Modeling:** Replaces expensive MD simulations with instantaneous inference, achieving high correlation with ground-truth trajectory data.
 *   **Thermodynamic Awareness:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
-*   **Hybrid Architecture:** Synergizes the evolutionary power of **Protein Language Models (ESM-C)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
+*   **Hybrid Architecture:** Takes **Protein Language Models (ESM-C)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
 
 
 ## 📂 Repository Architecture & Component Overview
