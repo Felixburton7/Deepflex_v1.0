@@ -65,33 +65,48 @@ This codebase is structured into three primary domains: **Core Architecture** (T
   <p style="font-size: 0.95em; color: #444;">Comprehensive library of baseline architectures used for comparative analysis.</p>
   
   <!-- Sub-Model 1 -->
-  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-    <h5 style="margin: 0 0 5px 0;">
+  <div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 4px;">
+    <h5 style="margin: 0 0 8px 0;">
       <a href="./models/simple_models/">📊 <code>simple_models/</code> (EnsembleFlex)</a>
     </h5>
-    <p style="font-size: 0.85em; margin: 0; color: #666;">
-      <strong>RF, LightGBM, Tabular NN:</strong> Standard ML baselines operating on aggregated CSV features. Includes the "OmniFlex" meta-learner.
+    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+      A suite of classical machine learning regressors operating on aggregated biophysical features:
     </p>
+    <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+       <li><strong>Random Forest Regressors:</strong> High-dimensional ensemble learning.</li>
+       <li><strong>LightGBM (Gradient Boosting):</strong> Efficient, tree-based gradient boosting frameworks.</li>
+       <li><strong>Tabular Neural Networks:</strong> Deep feed-forward networks for structured data.</li>
+       <li><strong>OmniFlex:</strong> A meta-learning architecture aggregating predictions from the above.</li>
+    </ul>
   </div>
   
   <!-- Sub-Model 2 -->
-  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-    <h5 style="margin: 0 0 5px 0;">
+  <div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 4px;">
+    <h5 style="margin: 0 0 8px 0;">
       <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
     </h5>
-    <p style="font-size: 0.85em; margin: 0; color: #666;">
-      <strong>3D CNNs:</strong> End-to-end Deep Learning predicting RMSF directly from volumetric protein representations (HDF5).
+    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+      End-to-end Deep Learning using volumetric protein representations:
     </p>
+     <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+       <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
+       <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
+    </ul>
   </div>
   
   <!-- Sub-Model 3 -->
-  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 0; border-radius: 4px;">
-    <h5 style="margin: 0 0 5px 0;">
+  <div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 0; border-radius: 4px;">
+    <h5 style="margin: 0 0 8px 0;">
       <a href="./models/esm_models/">🧬 <code>esm_models/</code> (ESM-Flex)</a>
     </h5>
-    <p style="font-size: 0.85em; margin: 0; color: #666;">
-      <strong>LLM Adapters:</strong> Pure sequence-based approaches fine-tuning ESM-3 embeddings via MLP heads and LoRA.
+    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+      Pure sequence-based approaches leveraging Large Protein Language Models (pLMs):
     </p>
+     <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+       <li><strong>ESM-3 Embeddings:</strong> Utilizing state-of-the-art transformer representations.</li>
+       <li><strong>MLP Projection Heads:</strong> Direct dimensionality reduction and regression.</li>
+       <li><strong>LoRA (Low-Rank Adaptation):</strong> Parameter-efficient fine-tuning of large transformer weights.</li>
+    </ul>
   </div>
 </div>
 
