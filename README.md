@@ -5,7 +5,7 @@
 ## 📂 Repository Structure & Component Overview
 
 <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-These repositories are the (slighlty messy) public repositories of my final year research Project at the University of Edinburgh. A clean/final DeepFlex is currently being worked on before publication. 
+A clean/final DeepFlex is currently being worked on before publication. These repositories are the public repositories of my final year disseration at the University of Edinburgh. 
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
