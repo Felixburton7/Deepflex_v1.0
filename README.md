@@ -1,114 +1,110 @@
-# 🧬 DeepFlex: 
+# 🧬 DeepFlex: Deep Learning for Protein Flexibility Prediction
 
-
-
-## 📂 Repository Structure & Component Overview
-
-<div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-A clean/final DeepFlex is currently being worked on before publication. These repositories are the public repositories of my final year disseration at the University of Edinburgh. 
+<div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
+  <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. The core architecture is currently being refactored into a final, publication-ready package.
 </div>
+
+## 📂 Repository Architecture & Component Overview
+
+This codebase is structured into three primary domains: **Core Architecture** (The Flagship Model), **Data Engineering** (Processing & Validation), and **Comparative Benchmarks** (Baseline Models).
 
 <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
 
-<div style="border-left: 4px solid #6236FF; padding-left: 15px; background-color: #f5f5ff; padding: 15px; border-radius: 5px;">
-  <h3 style="margin-top: 0;">
-    <a href="./deepflex/"><code>deepflex/</code></a> 
-    <span style="vertical-align: middle; margin-left: 5px;">🧠</span> 
-    <span style="font-size: 0.9em; color: #6236FF;">(Attention + ESM + Features)</span>
+<!-- SECTION 1: MAIN MODEL -->
+<div style="border-left: 5px solid #6236FF; background-color: #f8f9fa; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+  <h3 style="margin-top: 0; display: flex; align-items: center;">
+    <a href="./deepflex/" style="text-decoration: none; color: #0366d6;"><code>deepflex/</code></a> 
+    <span style="vertical-align: middle; margin-left: 8px;">🧠</span> 
+    <span style="font-size: 0.8em; color: #586069; font-weight: normal; margin-left: auto;">(Flagship Architecture)</span>
   </h3>
-  <ul style="margin-bottom: 5px;">
-    <li>The original <strong>DeepFlex</strong> model using <strong>ESM-C embeddings</strong>, structural features, and <strong>temperature-aware attention</strong>.</li>
-    <li><em>Input:</em> Processed CSV data.</li>
-    <li><em>Details:</em> <strong>See the <a href="./deepflex/README.md"><code>deepflex/README.md</code></a></strong></li>
+  <ul style="margin-bottom: 5px; padding-left: 20px; color: #444;">
+    <li><strong>The Core Model:</strong> Integrates <strong>ESM-C embeddings</strong> with geometric features using a novel <strong>temperature-aware attention mechanism</strong>.</li>
+    <li><em>Input:</em> Pre-processed feature vectors (CSV).</li>
+    <li><em>Documentation:</em> <strong><a href="./deepflex/README.md">View Architecture Details</a></strong></li>
   </ul>
 </div>
 
-<div style="border-left: 4px solid #28a745; padding-left: 15px; background-color: #f0fff4; padding: 15px; border-radius: 5px;">
-  <h3 style="margin-top: 0;">
-    <a href="./mdcath-data-loader-and-processor/"><code>mdcath-data-loader-and-processor/</code></a> 
-    <span style="vertical-align: middle; margin-left: 5px;">🔧</span> 
-    <span style="font-size: 0.9em; color: #28a745;">(Data Utility)</span>
-  </h3>
-  <ul style="margin-bottom: 5px;">
-    <li>A utility package for processing the <strong>mdCATH dataset</strong> – handles simulations, structures, feature calculation, and potentially <strong>voxelization</strong>.</li>
-    <li><em>Purpose:</em> Prepares mdCATH data into formats usable by the models (CSV, HDF5).</li>
-    <li><em>Details:</em> <strong>See the <a href="./mdcath-data-loader-and-processor/README.md"><code>mdcath-data-loader-and-processor/README.md</code></a></strong></li>
-  </ul>
-</div>
-
-<div style="border-left: 4px solid #28a745; padding-left: 15px; background-color: #f0fff4; padding: 15px; border-radius: 5px;">
-  <h3 style="margin-top: 0;">
-    <a href="./mdcath-holdout-set-creator/"><code>mdcath-holdout-set-creator/</code></a> 
-    <span style="vertical-align: middle; margin-left: 5px;">🔧</span> 
-    <span style="font-size: 0.9em; color: #28a745;">(Data Utility)</span>
-  </h3>
-  <ul style="margin-bottom: 5px;">
-    <li>Tools for creating robust <strong>holdout/validation sets</strong> from processed data, likely ensuring proper splitting (e.g., by topology).</li>
-    <li><em>Purpose:</em> Ensures reliable model evaluation.</li>
-    <li><em>Details:</em> <strong>See the <a href="./mdcath-holdout-set-creator/README.md"><code>mdcath-holdout-set-creator/README.md</code></a></strong></li>
-  </ul>
-</div>
-
-<div style="border-left: 4px solid #fd7e14; padding-left: 15px; background-color: #fff8f0; padding: 15px; border-radius: 5px;">
-  <h3 style="margin-top: 0;">
-    <a href="./models/"><code>models/</code></a> 
-    <span style="vertical-align: middle; margin-left: 5px;">📂</span> 
-    <span style="font-size: 0.9em; color: #fd7e14;">(Model Implementations)</span>
-  </h3>
+<!-- SECTION 2: DATA PIPELINES -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
   
-  <p>The central directory containing all model code, categorized as follows:</p>
-  
-  <div style="margin-left: 15px; border-left: 3px solid #6236FF; padding-left: 15px; margin-bottom: 15px; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+  <div style="border-left: 5px solid #28a745; background-color: #fff; border: 1px solid #e1e4e8; border-left-width: 5px; padding: 15px; border-radius: 4px;">
     <h4 style="margin-top: 0;">
-      <a href="./models/simple_models/"><code>simple_models/</code></a> 
-      <span style="vertical-align: middle; margin-left: 5px;">🧠</span> 
-      <span style="font-size: 0.9em; color: #6236FF;">(EnsembleFlex: RF, LGBM, NN)</span>
+      <a href="./mdcath-data-loader-and-processor/" style="color: #24292e;"><code>mdcath-processor/</code></a>
+      <span style="float: right;">🔧</span>
     </h4>
-    <ul style="margin-bottom: 5px;">
-      <li>Uses <strong>standard ML models</strong> (Random Forest, LightGBM, Neural Net) on <strong>aggregated tabular features</strong> (CSV). Temperature is an input feature. Includes "OmniFlex" mode using external predictions.</li>
-      <li><em>Input:</em> Aggregated CSV.</li>
-      <li><em>Details:</em> <strong>See the <a href="./models/simple_models/README.md"><code>models/simple_models/README.md</code></a></strong></li>
+    <p style="font-size: 0.9em; margin-bottom: 5px; color: #586069;"><strong>Data Engineering</strong></p>
+    <ul style="font-size: 0.9em; padding-left: 15px; margin-bottom: 0;">
+      <li>Processes raw <strong>mdCATH</strong> simulations.</li>
+      <li>Handles voxelization and HDF5 conversion.</li>
+      <li><a href="./mdcath-data-loader-and-processor/README.md">View Docs</a></li>
     </ul>
   </div>
-  
-  <div style="margin-left: 15px; border-left: 3px solid #6236FF; padding-left: 15px; margin-bottom: 15px; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+
+  <div style="border-left: 5px solid #28a745; background-color: #fff; border: 1px solid #e1e4e8; border-left-width: 5px; padding: 15px; border-radius: 4px;">
     <h4 style="margin-top: 0;">
-      <a href="./models/voxel_models/"><code>voxel_models/</code></a> 
-      <span style="vertical-align: middle; margin-left: 5px;">🧠</span> 
-      <span style="font-size: 0.9em; color: #6236FF;">(VoxelFlex: 3D CNNs)</span>
+      <a href="./mdcath-holdout-set-creator/" style="color: #24292e;"><code>holdout-creator/</code></a>
+      <span style="float: right;">🔧</span>
     </h4>
-    <ul style="margin-bottom: 5px;">
-      <li>Uses <strong>3D Convolutional Neural Networks</strong> to predict RMSF directly from <strong>voxelized protein structures (HDF5)</strong>. Includes multi-temperature and single-temperature implementations.</li>
-      <li><em>Input:</em> HDF5 Voxels, CSV RMSF data, TXT domain splits.</li>
-      <li><em>Details:</em> <strong>Explore <a href="./models/voxel_models/"><code>models/voxel_models/</code></a></strong> - Check READMEs inside specific folders (e.g., <code>VoxelFlex_Multi-Temperature/README.md</code>).</li>
+    <p style="font-size: 0.9em; margin-bottom: 5px; color: #586069;"><strong>Validation Strategy</strong></p>
+    <ul style="font-size: 0.9em; padding-left: 15px; margin-bottom: 0;">
+      <li>Creates rigorous train/test splits.</li>
+      <li>Ensures topological distinctness (CATH separation).</li>
+      <li><a href="./mdcath-holdout-set-creator/README.md">View Docs</a></li>
     </ul>
   </div>
+
+</div>
+
+<!-- SECTION 3: EXPERIMENTAL MODELS -->
+<div style="border-left: 5px solid #fd7e14; background-color: #fff8f0; padding: 15px; border-radius: 4px; border: 1px solid #fae3cc; border-left-width: 5px;">
+  <h3 style="margin-top: 0;">
+    <a href="./models/" style="text-decoration: none; color: #cf5a02;"><code>models/</code></a> 
+    <span style="font-size: 0.8em; color: #586069; font-weight: normal;">(Benchmarks & Ablations)</span>
+  </h3>
   
-  <div style="margin-left: 15px; border-left: 3px solid #6236FF; padding-left: 15px; margin-bottom: 0; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
-    <h4 style="margin-top: 0;">
-      <a href="./models/esm_models/"><code>esm_models/</code></a> 
-      <span style="vertical-align: middle; margin-left: 5px;">🧠</span> 
-      <span style="font-size: 0.9em; color: #6236FF;">(ESM-Flex: ESM Embeddings)</span>
-    </h4>
-    <ul style="margin-bottom: 5px;">
-      <li>Uses <strong>ESM embeddings (e.g., ESM-3)</strong> via Hugging Face <code>transformers</code> as the primary input. Includes MLP and LoRA fine-tuning approaches.</li>
-      <li><em>Input:</em> FASTA sequences.</li>
-      <li><em>Details:</em> <strong>Explore <a href="./models/esm_models/"><code>models/esm_models/</code></a></strong> - Check READMEs inside specific folders (e.g., <code>esm-flex-MLP/README.md</code>).</li>
-    </ul>
+  <p style="font-size: 0.95em; color: #444;">Comprehensive library of baseline architectures used for comparative analysis.</p>
+  
+  <!-- Sub-Model 1 -->
+  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
+    <h5 style="margin: 0 0 5px 0;">
+      <a href="./models/simple_models/">📊 <code>simple_models/</code> (EnsembleFlex)</a>
+    </h5>
+    <p style="font-size: 0.85em; margin: 0; color: #666;">
+      <strong>RF, LightGBM, Tabular NN:</strong> Standard ML baselines operating on aggregated CSV features. Includes the "OmniFlex" meta-learner.
+    </p>
+  </div>
+  
+  <!-- Sub-Model 2 -->
+  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
+    <h5 style="margin: 0 0 5px 0;">
+      <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
+    </h5>
+    <p style="font-size: 0.85em; margin: 0; color: #666;">
+      <strong>3D CNNs:</strong> End-to-end Deep Learning predicting RMSF directly from volumetric protein representations (HDF5).
+    </p>
+  </div>
+  
+  <!-- Sub-Model 3 -->
+  <div style="background-color: white; border: 1px solid #eee; padding: 10px; margin-bottom: 0; border-radius: 4px;">
+    <h5 style="margin: 0 0 5px 0;">
+      <a href="./models/esm_models/">🧬 <code>esm_models/</code> (ESM-Flex)</a>
+    </h5>
+    <p style="font-size: 0.85em; margin: 0; color: #666;">
+      <strong>LLM Adapters:</strong> Pure sequence-based approaches fine-tuning ESM-3 embeddings via MLP heads and LoRA.
+    </p>
   </div>
 </div>
 
-<div style="border-left: 4px solid #17a2b8; padding-left: 15px; background-color: #f0f8ff; padding: 15px; border-radius: 5px;">
-  <h3 style="margin-top: 0;">
-    <a href="./trained_models/"><code>trained_models/</code></a> 
-    <span style="vertical-align: middle; margin-left: 5px;">💾</span> 
-    <span style="font-size: 0.9em; color: #17a2b8;">(Local Model Storage)</span>
-  </h3>
-  <ul style="margin-bottom: 5px;">
-    <li>Directory for storing <strong>trained model files locally</strong> (ignored by Git). Suitable for large checkpoints or specific experimental results not intended for version control.</li>
-  </ul>
+<!-- SECTION 4: STORAGE -->
+<div style="border-left: 5px solid #6c757d; background-color: #f6f8fa; padding: 10px; border-radius: 4px; opacity: 0.8;">
+  <h4 style="margin: 0; font-size: 0.9em;">
+    <a href="./trained_models/" style="color: #24292e; text-decoration: none;">💾 <code>trained_models/</code></a> <span style="font-weight: normal; font-size: 0.9em;">(Local Storage)</span>
+  </h4>
+  <p style="font-size: 0.8em; margin: 0; padding-left: 20px; color: #586069;">
+    Directory for large model checkpoints and experimental artifacts (excluded from git tracking).
+  </p>
 </div>
 
 </div>
 
-<hr style="height: 3px; background: linear-gradient(to right, #6236FF, #28a745, #fd7e14, #17a2b8); border: none; border-radius: 2px; margin: 30px 0;">
+<hr style="border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)); margin: 30px 0;">
