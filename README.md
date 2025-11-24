@@ -5,9 +5,8 @@
 </div>
 
 
-This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
-
 ### Key Contributions:
+This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
 *   **Surrogate Modeling:** Replaces expensive MD simulations with instantaneous inference, achieving high correlation with ground-truth trajectory data.
 *   **Thermodynamic Awareness:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
 *   **Hybrid Architecture:** Takes **Protein Language Models (ESM-C)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
