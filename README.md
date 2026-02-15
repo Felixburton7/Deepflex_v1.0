@@ -9,7 +9,7 @@
 This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
 *   **Surrogate Modeling:** Replaces expensive MD simulations with instantaneous inference, achieving high correlation with ground-truth trajectory data.
 *   **Thermodynamic Awareness:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
-*   **Hybrid Architecture:** Takes **Protein Language Models (ESM-C)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
+*   **Hybrid Architecture:** Takes **Protein Language Models (<a href="https://huggingface.co/EvolutionaryScale/esmc-600m-2024-12" target="_blank">ESM-C</a>)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
 
 
 ## 📂 Repository Architecture & Component Overview
@@ -25,6 +25,11 @@ This codebase is structured into three primary domains: **Core Architecture** (T
     <span style="vertical-align: middle; margin-left: 8px;">🧠</span> 
     <span style="font-size: 0.8em; color: #586069; font-weight: normal; margin-left: auto;">(Flagship Architecture)</span>
   </h3>
+
+  <div style="margin: 15px 0; border: 1px solid #e1e4e8; border-radius: 4px; overflow: hidden;">
+    <img src="https://raw.githubusercontent.com/Felixburton7/Deepflex_v1.0/main/DeepFlex.png" alt="DeepFlex Model Architecture" style="width: 100%; display: block;">
+  </div>
+
   <ul style="margin-bottom: 5px; padding-left: 20px; color: #444;">
     <li><strong>The Core Model:</strong> Integrates <strong>ESM-C embeddings</strong> with geometric features using a novel <strong>temperature-aware attention mechanism</strong>.</li>
     <li><em>Input:</em> Pre-processed feature vectors (CSV).</li>
@@ -93,13 +98,19 @@ This codebase is structured into three primary domains: **Core Architecture** (T
     <h5 style="margin: 0 0 8px 0;">
       <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
     </h5>
-    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
-      End-to-end Deep Learning using volumetric protein representations:
-    </p>
-     <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
-       <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
-       <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
-    </ul>
+
+<div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
+  <img src="./VoxelFlex.png" alt="VoxelFlex Input Representation" style="width: 100%; display: block;">
+</div>
+
+<p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+  End-to-end Deep Learning using volumetric protein representations:
+</p>
+<ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+  <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
+  <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
+</ul>
+
   </div>
   
   <!-- Sub-Model 3 -->
