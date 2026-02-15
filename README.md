@@ -175,7 +175,7 @@ End-to-end Deep Learning using geometric protein representations:
       Pure sequence-based approaches leveraging Large Protein Language Models (pLMs):
     </p>
      <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
-       <li><strong>ESM-3 Embeddings:</strong> Utilizing state-of-the-art transformer representations.</li>
+       <li><strong>[ESM-3 Embeddings](https://www.evolutionaryscale.ai/blog/esm-cambrian):</strong> Utilizing state-of-the-art transformer representations.</li>
        <li><strong>MLP Projection Heads:</strong> Direct dimensionality reduction and regression.</li>
        <li><strong>LoRA (Low-Rank Adaptation):</strong> Parameter-efficient fine-tuning of large transformer weights.</li>
     </ul>
