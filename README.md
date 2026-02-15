@@ -166,7 +166,7 @@ This codebase is structured into three primary domains: **Core Architecture** (D
 </div>
 
 <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
-End-to-end Deep Learning using volumetric protein representations:
+End-to-end Deep Learning using geometric protein representations:
 </p>
 <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
 <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
