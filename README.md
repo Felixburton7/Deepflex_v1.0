@@ -1,4 +1,4 @@
-# 🧬 DeepFlex: Deep Learning for Protein Flexibility Prediction
+# DeepFlex: Deep Learning for Protein Flexibility Prediction
 
 <div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
@@ -14,7 +14,7 @@ This project introduces a **temperature-aware Deep Learning framework** capable 
 
 ## 📂 Repository Architecture & Component Overview
 
-This codebase is structured into three primary domains: **Core Architecture** (The Flagship Model), **Data Engineering** (Processing & Validation), and **Comparative Benchmarks** (Baseline Models).
+This codebase is structured into three primary domains: **Core Architecture** (DeepFlex Model), **Data Engineering** (Processing & Validation), and **Comparative Benchmarks** (Baseline Models).
 
 <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
 
@@ -22,8 +22,7 @@ This codebase is structured into three primary domains: **Core Architecture** (T
 <div style="border-left: 5px solid #6236FF; background-color: #f8f9fa; padding: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
   <h3 style="margin-top: 0; display: flex; align-items: center;">
     <a href="./deepflex/" style="text-decoration: none; color: #0366d6;"><code>deepflex/</code></a> 
-    <span style="vertical-align: middle; margin-left: 8px;">🧠</span> 
-    <span style="font-size: 0.8em; color: #586069; font-weight: normal; margin-left: auto;">(Flagship Architecture)</span>
+    <span style="font-size: 0.8em; color: #586069; font-weight: normal; margin-left: auto;">(Architecture)</span>
   </h3>
 
   <div style="margin: 15px 0; border: 1px solid #e1e4e8; border-radius: 4px; overflow: hidden;">
