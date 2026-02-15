@@ -2,7 +2,6 @@
 <p align="left">
 
   <!-- Core stack -->
-  <img src="https://img.shields.io/badge/Language-Python-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Deep%20Learning-PyTorch-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
   <img src="https://img.shields.io/badge/ML-scikit--learn-F7931E?logo=scikit-learn&logoColor=white" alt="scikit-learn">
 
@@ -10,7 +9,6 @@
   <img src="https://img.shields.io/badge/Numerics-NumPy-013243?logo=numpy&logoColor=white" alt="NumPy">
   <img src="https://img.shields.io/badge/Data-Pandas-150458?logo=pandas&logoColor=white" alt="Pandas">
   <img src="https://img.shields.io/badge/Scientific-SciPy-8CAAE6?logo=scipy&logoColor=white" alt="SciPy">
-  <img src="https://img.shields.io/badge/IO-h5py-4e79a7" alt="h5py">
 
   <!-- Bio / structure ecosystem -->
   <img src="https://img.shields.io/badge/BioPython-1f8f5f" alt="BioPython">
@@ -22,10 +20,6 @@
   </a>
   <img src="https://img.shields.io/badge/NLP-Transformers-ffd21e?logo=huggingface&logoColor=black" alt="Transformers">
   <img src="https://img.shields.io/badge/Hub-Hugging%20Face-ffd21e?logo=huggingface&logoColor=black" alt="Hugging Face">
-
-  <!-- Plotting -->
-  <img src="https://img.shields.io/badge/Plots-Matplotlib-11557c" alt="Matplotlib">
-  <img src="https://img.shields.io/badge/Plots-Seaborn-4c78a8" alt="Seaborn">
 
   <!-- Dataset -->
   <img src="https://img.shields.io/badge/Dataset-mdCATH-0b7285" alt="mdCATH">
@@ -41,7 +35,7 @@
 
 A lightweight, temperature-aware protein flexibility predictor in python.
 
-DeepFlex predicts per-residue Root Mean Square Fluctuation (RMSF) profiles from protein sequence/structure features using a hybrid deep-learning architecture that combines protein language model embeddings (ESM-C) with geometric descriptors and attention to capture long-range effects—delivering MD-like flexibility signals in seconds rather than hours. It’s designed to be fast, practical, and easy to run as a research codebase for reproducible experiments and benchmarking.
+DeepFlex predicts per-residue Root Mean Square Fluctuation (RMSF) profiles from protein sequence/structure features using a hybrid deep-learning architecture that combines protein language model embeddings (ESM-C) with geometric descriptors and attention to capture long-range effects—delivering MD-like flexibility signals in seconds rather than hours.
 
 <div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
@@ -49,7 +43,7 @@ DeepFlex predicts per-residue Root Mean Square Fluctuation (RMSF) profiles from 
 
 
 ### Key Contributions:
-This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magnitude than traditional simulations. It was trained on [mdCATH dataset](https://huggingface.co/datasets/compsciencelab/mdCATH). 
+This project introduces **DeepFlex** a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magnitude than traditional simulations. It was trained on [mdCATH dataset](https://huggingface.co/datasets/compsciencelab/mdCATH). 
 
 *   **Flexibility Prediction:** Replaces expensive MD simulations with rapid inference, achieving high correlation with ground-truth trajectory data.
 *   **Temperature as an input:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
