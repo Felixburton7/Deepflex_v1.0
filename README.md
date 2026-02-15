@@ -156,24 +156,22 @@ This codebase is structured into three primary domains: **Core Architecture** (D
   </div>
   
   <!-- Sub-Model 2 -->
-  <div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 4px;">
+<div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 4px;">
     <h5 style="margin: 0 0 8px 0;">
       <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
     </h5>
 
-    <div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
-      <img src="https://raw.githubusercontent.com/Felixburton7/Deepflex_v1.0/main/VoxelFlex.png"
-           alt="VoxelFlex Input Representation"
-           style="width: 100%; display: block;">
-    </div>
+<div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
+<img src="https://raw.githubusercontent.com/Felixburton7/Deepflex_v1.0/main/VoxelFlex.png" alt="VoxelFlex Input Representation" style="width: 100%; display: block;">
+</div>
 
-    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
-      End-to-end Deep Learning using volumetric protein representations:
-    </p>
-    <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
-      <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
-      <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
-    </ul>
+<p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+End-to-end Deep Learning using volumetric protein representations:
+</p>
+<ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+<li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
+<li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
+</ul>
 
   </div>
 
