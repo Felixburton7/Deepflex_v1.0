@@ -38,14 +38,9 @@
 
 # DeepFlex: Deep Learning for Protein Flexibility Prediction
 
-<!-- Logo placeholder (Pocketeer-style centre logo) -->
+<!-- DeepFlex logo (now wired up) -->
 <p align="center">
-  <!-- TODO: Replace this with your DeepFlex logo path -->
-  <img src="PATH_TO_DEEPFLEX_LOGO.png" alt="DeepFlex Logo" width="240">
-</p>
-
-<p align="center">
-  <strong>DEEPFLEX</strong>
+  <img src="https://github.com/Felixburton7/Deepflex_v1.0/blob/main/DeepFlex%20logo.png?raw=1" alt="DeepFlex Logo" width="550">
 </p>
 
 <p align="center">
@@ -166,17 +161,11 @@ This codebase is structured into three primary domains: **Core Architecture** (D
       <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
     </h5>
 
-    <!-- VoxelFlex image (fixed): use GitHub's raw=1 form (reliable in README HTML blocks) -->
     <div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
-      <img src="https://github.com/Felixburton7/Deepflex_v1.0/blob/main/VoxelFlex.png?raw=1" alt="VoxelFlex Input Representation" style="width: 100%; display: block;">
+      <img src="https://raw.githubusercontent.com/Felixburton7/Deepflex_v1.0/main/VoxelFlex.png"
+           alt="VoxelFlex Input Representation"
+           style="width: 100%; display: block;">
     </div>
-
-    <!-- Extra fallback that always works on GitHub even if HTML gets sanitised somewhere -->
-    <noscript>
-
-![VoxelFlex Input Representation](./VoxelFlex.png)
-
-    </noscript>
 
     <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
       End-to-end Deep Learning using volumetric protein representations:
@@ -187,6 +176,7 @@ This codebase is structured into three primary domains: **Core Architecture** (D
     </ul>
 
   </div>
+
   
   <!-- Sub-Model 3 -->
   <div style="background-color: white; border: 1px solid #eee; padding: 15px; margin-bottom: 0; border-radius: 4px;">
@@ -216,4 +206,4 @@ This codebase is structured into three primary domains: **Core Architecture** (D
 
 </div>
 
-<hr style="border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)); margin: 30px 0;">
+<hr style="border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.)); margin: 30px 0;">
