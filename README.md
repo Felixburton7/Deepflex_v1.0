@@ -1,9 +1,5 @@
 <!-- Badges (Pocketeer-style) -->
 <p align="left">
-  <!-- Award -->
-  <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/">
-    <img src="https://img.shields.io/badge/Award-UK%20Biochemical%20Society-1f6feb" alt="UK Undergraduate Biochemical Society Award">
-  </a>
 
   <!-- Core stack -->
   <img src="https://img.shields.io/badge/Language-Python-3776AB?logo=python&logoColor=white" alt="Python">
@@ -18,7 +14,6 @@
 
   <!-- Bio / structure ecosystem -->
   <img src="https://img.shields.io/badge/BioPython-1f8f5f" alt="BioPython">
-  <img src="https://img.shields.io/badge/BioTite-2b6cb0" alt="BioTite">
   <img src="https://img.shields.io/badge/Visualisation-PyMOL-0b7285" alt="PyMOL">
 
   <!-- ESM / Transformers -->
@@ -43,15 +38,22 @@
   <img src="https://github.com/Felixburton7/Deepflex_v1.0/blob/main/DeepFlex%20logo.png?raw=1" alt="DeepFlex Logo" width="550">
 </p>
 
-<p align="center">
-  A temperature-aware deep learning framework for per-residue RMSF prediction in proteins.
-</p>
 
----
+A lightweight, temperature-aware protein flexibility predictor in python.
+
+DeepFlex predicts per-residue Root Mean Square Fluctuation (RMSF) profiles from protein sequence/structure features using a hybrid deep-learning architecture that combines protein language model embeddings (ESM-C) with geometric descriptors and attention to capture long-range effects—delivering MD-like flexibility signals in seconds rather than hours. It’s designed to be fast, practical, and easy to run as a research codebase for reproducible experiments and benchmarking.
 
 <div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
 </div>
+
+
+### Key Contributions:
+This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magnitude than traditional simulations. It was trained on [mdCATH dataset](https://huggingface.co/datasets/compsciencelab/mdCATH). 
+
+*   **Flexibility Prediction:** Replaces expensive MD simulations with rapid inference, achieving high correlation with ground-truth trajectory data.
+*   **Temperature as an input:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
+*   **Architecture:** Takes **Protein Language Models (<a href="https://huggingface.co/EvolutionaryScale/esmc-600m-2024-12" target="_blank">ESM-C</a>)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
 
 <!-- RMSF formula (rendered as an image so it ALWAYS works on GitHub) -->
 <div style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px 15px; margin: 0 0 25px 0;">
@@ -68,12 +70,6 @@
     where <b>r</b><sub>i</sub>(t) is the position vector of residue <i>i</i> at time <i>t</i>, and ⟨<b>r</b><sub>i</sub>⟩ is its time-averaged position.
   </div>
 </div>
-
-### Key Contributions:
-This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
-*   **Surrogate Modeling:** Replaces expensive MD simulations with instantaneous inference, achieving high correlation with ground-truth trajectory data.
-*   **Thermodynamic Awareness:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
-*   **Hybrid Architecture:** Takes **Protein Language Models (<a href="https://huggingface.co/EvolutionaryScale/esmc-600m-2024-12" target="_blank">ESM-C</a>)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
 
 ## 📂 Repository Architecture & Component Overview
 
