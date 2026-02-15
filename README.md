@@ -1,16 +1,84 @@
+<!-- Badges (Pocketeer-style) -->
+<p align="left">
+  <!-- Award -->
+  <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/">
+    <img src="https://img.shields.io/badge/Award-UK%20Biochemical%20Society-1f6feb" alt="UK Undergraduate Biochemical Society Award">
+  </a>
+
+  <!-- Core stack -->
+  <img src="https://img.shields.io/badge/Language-Python-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Deep%20Learning-PyTorch-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/ML-scikit--learn-F7931E?logo=scikit-learn&logoColor=white" alt="scikit-learn">
+
+  <!-- Scientific Python -->
+  <img src="https://img.shields.io/badge/Numerics-NumPy-013243?logo=numpy&logoColor=white" alt="NumPy">
+  <img src="https://img.shields.io/badge/Data-Pandas-150458?logo=pandas&logoColor=white" alt="Pandas">
+  <img src="https://img.shields.io/badge/Scientific-SciPy-8CAAE6?logo=scipy&logoColor=white" alt="SciPy">
+  <img src="https://img.shields.io/badge/IO-h5py-4e79a7" alt="h5py">
+
+  <!-- Bio / structure ecosystem -->
+  <img src="https://img.shields.io/badge/BioPython-1f8f5f" alt="BioPython">
+  <img src="https://img.shields.io/badge/BioTite-2b6cb0" alt="BioTite">
+  <img src="https://img.shields.io/badge/Visualisation-PyMOL-0b7285" alt="PyMOL">
+
+  <!-- ESM / Transformers -->
+  <a href="https://huggingface.co/EvolutionaryScale/esmc-600m-2024-12">
+    <img src="https://img.shields.io/badge/pLM-ESM--C-6f42c1" alt="ESM-C">
+  </a>
+  <img src="https://img.shields.io/badge/NLP-Transformers-ffd21e?logo=huggingface&logoColor=black" alt="Transformers">
+  <img src="https://img.shields.io/badge/Hub-Hugging%20Face-ffd21e?logo=huggingface&logoColor=black" alt="Hugging Face">
+
+  <!-- Plotting -->
+  <img src="https://img.shields.io/badge/Plots-Matplotlib-11557c" alt="Matplotlib">
+  <img src="https://img.shields.io/badge/Plots-Seaborn-4c78a8" alt="Seaborn">
+
+  <!-- Dataset -->
+  <img src="https://img.shields.io/badge/Dataset-mdCATH-0b7285" alt="mdCATH">
+</p>
+
 # DeepFlex: Deep Learning for Protein Flexibility Prediction
+
+<!-- Logo placeholder (Pocketeer-style centre logo) -->
+<p align="center">
+  <!-- TODO: Replace this with your DeepFlex logo path -->
+  <img src="PATH_TO_DEEPFLEX_LOGO.png" alt="DeepFlex Logo" width="240">
+</p>
+
+<p align="center">
+  <strong>DEEPFLEX</strong>
+</p>
+
+<p align="center">
+  A temperature-aware deep learning framework for per-residue RMSF prediction in proteins.
+</p>
+
+---
 
 <div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
 </div>
 
+<!-- RMSF formula (rendered as an image so it ALWAYS works on GitHub) -->
+<div style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 12px 15px; margin: 0 0 25px 0;">
+  <strong>RMSF definition</strong> (per residue <em>i</em>):<br><br>
+
+  <p align="center" style="margin: 0;">
+    <img
+      src="https://latex.codecogs.com/svg.image?\mathrm{RMSF}_i=\sqrt{\left\langle\left\|\mathbf{r}_i(t)-\left\langle\mathbf{r}_i\right\rangle\right\|^2\right\rangle_t}"
+      alt="RMSF_i = sqrt( < || r_i(t) - <r_i> ||^2 >_t )"
+    />
+  </p>
+
+  <div style="color:#586069; font-size: 0.9em; margin-top: 10px;">
+    where <b>r</b><sub>i</sub>(t) is the position vector of residue <i>i</i> at time <i>t</i>, and ⟨<b>r</b><sub>i</sub>⟩ is its time-averaged position.
+  </div>
+</div>
 
 ### Key Contributions:
 This project introduces a **temperature-aware Deep Learning framework** capable of predicting per-residue Root Mean Square Fluctuation (RMSF) profiles several orders of magintude than traditional simulations. 
 *   **Surrogate Modeling:** Replaces expensive MD simulations with instantaneous inference, achieving high correlation with ground-truth trajectory data.
 *   **Thermodynamic Awareness:** Unlike standard B-factor predictors, DeepFlex explicitly models **temperature dependence**, allowing users to probe protein flexibility across different thermal conditions.
 *   **Hybrid Architecture:** Takes **Protein Language Models (<a href="https://huggingface.co/EvolutionaryScale/esmc-600m-2024-12" target="_blank">ESM-C</a>)** with geometric structural features and attention mechanisms to capture long-range allosteric effects.
-
 
 ## 📂 Repository Architecture & Component Overview
 
@@ -98,17 +166,25 @@ This codebase is structured into three primary domains: **Core Architecture** (D
       <a href="./models/voxel_models/">🧊 <code>voxel_models/</code> (VoxelFlex)</a>
     </h5>
 
-<div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
-  <img src="./VoxelFlex.png" alt="VoxelFlex Input Representation" style="width: 100%; display: block;">
-</div>
+    <!-- VoxelFlex image (fixed): use GitHub's raw=1 form (reliable in README HTML blocks) -->
+    <div style="margin: 10px 0; border: 1px solid #eee; border-radius: 3px; overflow: hidden;">
+      <img src="https://github.com/Felixburton7/Deepflex_v1.0/blob/main/VoxelFlex.png?raw=1" alt="VoxelFlex Input Representation" style="width: 100%; display: block;">
+    </div>
 
-<p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
-  End-to-end Deep Learning using volumetric protein representations:
-</p>
-<ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
-  <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
-  <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
-</ul>
+    <!-- Extra fallback that always works on GitHub even if HTML gets sanitised somewhere -->
+    <noscript>
+
+![VoxelFlex Input Representation](./VoxelFlex.png)
+
+    </noscript>
+
+    <p style="font-size: 0.85em; margin: 0 0 5px 0; color: #666;">
+      End-to-end Deep Learning using volumetric protein representations:
+    </p>
+    <ul style="font-size: 0.85em; color: #444; padding-left: 20px; margin-bottom: 0;">
+      <li><strong>3D Convolutional Neural Networks (3D-CNNs):</strong> Learning spatial flexibility features directly from HDF5 voxel grids.</li>
+      <li><strong>Multi-Temperature Architectures:</strong> Handling thermodynamic variability in inputs.</li>
+    </ul>
 
   </div>
   
