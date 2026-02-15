@@ -28,9 +28,9 @@
 # DeepFlex: Deep Learning for Protein Flexibility Prediction
 
 <!-- DeepFlex logo (now wired up) -->
-<p align="center">
+<!-- <p align="center">
   <img src="https://github.com/Felixburton7/Deepflex_v1.0/blob/main/DeepFlex%20logo.png?raw=1" alt="DeepFlex Logo" width="550">
-</p>
+</p> -->
 
 
 A lightweight, temperature-aware protein flexibility predictor in python.
