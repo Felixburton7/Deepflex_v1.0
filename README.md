@@ -33,10 +33,6 @@
 </p> -->
 
 
-A lightweight, temperature-aware protein flexibility predictor in python.
-
-DeepFlex predicts per-residue Root Mean Square Fluctuation (RMSF) profiles from protein sequence/structure features using a hybrid deep-learning architecture that combines protein language model embeddings (ESM-C) with geometric descriptors and attention to capture long-range effects—delivering MD-like flexibility signals in seconds rather than hours.
-
 <div style="background-color: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
   <strong>📢 Project Status:</strong> This repository contains the complete codebase for a final year dissertation at the University of Edinburgh. This project won the <a href="https://www.biochemistry.org/grants-and-awards/grants-and-bursaries/undergraduate-recognition-awards/current-awardees/" target="_blank">UK Undergraduate Biochemical Society Award</a> and achieved the highest grade of the year (2025). The core architecture is currently being refactored into a final, publication-ready package. 
 </div>
